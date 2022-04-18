@@ -1,0 +1,2509 @@
+---
+title: "The Missing Data Book - Exercises"
+author: "by Nicholas Tierney and Allison Horst"
+output: 
+  learnr::tutorial:
+    css: css/style.css
+    number_sections: true
+runtime: shiny_prerendered
+
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(tidyverse)
+library(naniar)
+library(kableExtra)
+library(here)
+library(icons)
+library(simputation)
+library(lubridate)
+library(tidyselect)
+library(missingdataexercises)
+
+knitr::opts_chunk$set(echo = FALSE)
+
+# Note: datasets are stored as .Rda (R data objects) accessed through the package - see data-raw/ for pre-processing code.
+
+############################
+# Data pre-prep
+############################
+
+# ----- Prep salamander table ------
+salamander_kable <- head(salamanders, 10) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+salamander_kable
+
+# ----- Store filled version of frogger -----
+frogger_fill <- frogger %>% fill(name)
+
+# ----- Store complete version of frogger -----
+frogger_complete <- frogger_fill %>% complete(name, time)
+
+#############################
+# ------ imputed versions for Ch 7 activites ------ #
+#############################
+
+#------ create hares_imputed ------#
+hares_imputed <- hares %>% 
+  impute_below_if(.predicate = is.numeric)
+
+#------ create hares_tracked ------#
+hares_tracked <- hares %>% 
+  nabular() %>% 
+  impute_below_if(.predicate = is.numeric) %>% 
+  add_label_shadow()
+
+#------ create salamanders_sm -------#
+salamanders_sm <- salamanders %>% 
+  select(date, species, total_length, wet_mass)
+
+#------ create sal_impute -----# 
+sal_impute <- salamanders_sm %>% 
+  nabular() %>%  
+  impute_below_if(.predicate = is.numeric) %>%  
+  add_label_shadow()
+
+#------- create lakeimpute -------#
+lakeimpute <- greenlake %>% 
+  nabular() %>% 
+  impute_mean_all() %>% 
+  add_label_shadow()
+
+#------- create lake_long -------#
+lake_long <- shadow_long(lakeimpute,
+                         pH,
+                         temp)
+
+#------- create ocean_imp_lm_wind -------#
+ocean_imp_lm_wind <- oceanbuoys %>% 
+    nabular() %>%
+    impute_lm(air_temp_c ~ wind_ew + wind_ns) %>% 
+    impute_lm(humidity ~ wind_ew + wind_ns) %>%
+    add_label_shadow()
+
+#------- create ocean_imp_mean -------#
+ocean_imp_mean <- nabular(oceanbuoys) %>%
+  impute_mean_all() %>%
+  add_label_shadow()
+
+#------- create ocean_cc -------#
+ocean_cc <- oceanbuoys %>%
+  na.omit() %>%
+  nabular() %>%
+  add_label_shadow()
+
+#------- create ocean_lm_imp_all -------#
+ocean_imp_lm_all <- nabular(oceanbuoys) %>%
+  add_label_shadow() %>%
+  as.data.frame() %>% 
+  impute_lm(sea_temp_c ~ wind_ew + wind_ns + year + latitude + longitude) %>%
+  impute_lm(air_temp_c ~ wind_ew + wind_ns + year + latitude + longitude) %>%
+  impute_lm(humidity ~ wind_ew + wind_ns + year + latitude + longitude)
+
+# ------- icon setup ------- #
+icon_code <- icon_style(fontawesome("laptop-code"), scale = 0.85, fill = "white")
+
+icon_choose <- icon_style(fontawesome("list"), scale = 0.85, fill = "white")
+
+icon_think <- icon_style(fontawesome("brain"), scale = 0.85, fill = "white")
+
+```
+
+## Welcome and overview {-}
+
+Welcome to the exercises for [The Missing Data Book](TODO: add link)! Exercises are designed to help learners to think about, work with, visualize, and interpret missing values in data using existing R packages including [`naniar`](https://naniar.njtierney.com/). 
+
+Exercises are scaffolded and closely follow the chapters and R examples in the book. We therefore recommended reading each chapter before attempting the accompanying exercises, then working through the exercises in order for that chapter. 
+
+### The exercises {-}
+
+There are three types of exercises, represented by icons: 
+
+- `r icon_style(fontawesome("list"), scale = 1)`: The list icon indicates a **multiple choice exercise**
+- `r icon_style(fontawesome("laptop-code"), scale = 1)`: The computer icon indicates a **coding exercise**
+- `r icon_style(fontawesome("brain"), scale = 1)`: The brain icon indicates a **critical thinking exercise** 
+
+For coding exercising, you can add code within the code chunk and press "Run" to run it. If you get stuck, press the "Hint" or "Solution" button to get back on track!
+
+### Meet the datasets {-}
+
+Throughout these exercises we'll explore missingness across a number of different datasets. Let's meet them! 
+
+##### `frogger` dataset {-}
+
+**Source:** [TODO]
+
+**Summary:** [TODO]
+
+**Variables in `frogger` dataset:** [TODO]
+
+---
+
+##### `greenlake` dataset {-}
+
+**Source:** Mcnight, D., K. Loria, and Niwot Ridge LTER. 2020. Water quality data for Green Lakes Valley, 2000 - ongoing. ver 5. Environmental Data Initiative. https://doi.org/10.6073/pasta/c3e174ce23e72593c407961e57c7e46c (Accessed 2020-07-28).
+ 
+**Summary:** Water quality data recorded at lakes near Niwot Ridge, Colorado, USA. *Note: this dataset represents a sample of the original dataset, and should not be used to answer research questions. Those interested in exploring the entire dataset should visit the link above.*
+
+**Variables in `greenlake` dataset:** 
+
+- `year`: a number, the calendar year
+- `depth`: a number, the measurement depth (meters)
+- `chl_a`: a number, the chlorophyll A concentration (microgram per liter)
+- `pH`: a number, the pH
+- `temp`: a number, the water temperature (celsius)
+- `nitrate`: a number, the nitrate concentration (milligram per liter)
+
+---
+
+##### `hares` dataset {-}
+
+**Source:** Kielland, K., F.S. Chapin, R.W. Ruess, and Bonanza Creek LTER. 2017. Snowshoe hare physical data in Bonanza Creek Experimental Forest: 1999-Present ver 22. Environmental Data Initiative. https://doi.org/10.6073/pasta/03dce4856d79b91557d8e6ce2cbcdc14 (Accessed 2022-03-03).
+
+**Summary:** "Snowshoe hares, Lepus americanus, are a 'keystone' prey species in northern boreal forests and experience population fluctuations of 8-11-years. Despite intense responses of both vegetation and predators to changes in hare densities, landscape-scale comparisons of hare populations in Alaska have been limited to qualitative descriptions. We conducted capture-recapture studies of snowshoe hares at 5 locales in the Tanana valley, from Tok in the east to Clear in the west from 1999 to 2002" (Keilland et al. 2017). *Note: this dataset represents a sample of the original dataset, and should not be used to answer research questions. Those interested in exploring the entire dataset should visit the link above.*
+
+**Variables in `hares` dataset:** 
+
+- `date`: a Date, indicating the date the record was collected
+- `weight`: a number, indicating hare weight (grams)
+- `hindft`: a number, indicating hind foot length (millimeters)
+
+---
+
+##### `oceanbuoys` dataset {-}
+
+**Source:** The data is collected by the Tropical Atmosphere Ocean project (https://www.pmel.noaa.gov/gtmba/pmel-theme/pacific-ocean-tao), and accessed from: https://www.pmel.noaa.gov/tao/drupal/disdel/.
+
+**Summary:** (from `naniar` documentation) "Real-time data from moored ocean buoys for improved detection, understanding and prediction of El Ni'o and La Ni'a."
+
+**Variables in the `oceanbuoys` dataset:**
+
+- `year`: a number denoting observation year (1993 or 1997)
+- `latitude`: a number denoting the observation latitude in degrees (from -5 to -20)
+- `longitude`: a number denoting the observation longitude in degrees (from -110 to -95)
+- `sea_temp_c`: a number denoting sea surface temperature (degrees Celsius), measured by TAO buoys at one meter below the sea surface
+- `air_temp_c`: a number denoting the air temperature (degree Celsius), measured by TAO buoys three meters above the sea surface
+- `humidity`: a number denoting relative humidity (%), measured by TAO buoys 3 meters above the sea surface
+- `wind_ew`: a number denoting the East-West wind vector component (meters per second). TAO buoys measure the wind speed and direction four meters above the sea surface. If it is positive, the East-West component of the wind is blowing toward the East. If negative, this component is blowing toward the west
+- `wind_ns`: a number denoting the North-South wind vector component (meters per second). TAO buoys measure the wind speed and direction four meters above the sea surface. If it is positive, the North-South component of the wind is blowing toward the North. If it is negative, this component is blowing toward the South.
+
+---
+
+##### `pacman` dataset {-}
+
+**Source:** [TODO]
+
+**Summary:** [TODO]
+
+**Variables in `pacman` dataset:** [TODO]
+
+---
+
+##### `pie` dataset {-}
+
+**Source:** [TODO]
+
+**Summary:** [TODO]
+
+**Variables in `pie` dataset:** [TODO]
+
+---
+
+##### `salamanders` dataset {-}
+
+**Source:** Coweeta Long Term Ecological Research Program and J. Maerz. 2014. Stream salamander mark-recapture abundance study at the Coweeta Hydrologic Laboratory, Otto, NC. ver 13. Environmental Data Initiative. https://doi.org/10.6073/pasta/ebe25d39a2aa40e92b9091c42ae5c294 (Accessed 2022-03-03).
+
+**Summary:** "Mark-recapture data of the stream-dwelling plethodontid salamander species located in six streams within the Coweeta LTER site. The data covers the periods of May to August 2007 and 2008. Animals were either captured and given an individual mark using elastomer dye, or simply counted if animals were too small in size to mark. Animals were identified, measured, marked, and released directly following capture" (Coweeta LTER and Maers 2014). *Note: this dataset represents a sample of the original dataset, and should not be used to answer research questions. Those interested in exploring the entire dataset should visit the link above.*
+
+**Variables in the `salamanders` dataset:**
+
+- `date`: a Date, indicating record date
+- `stream_site`: a number, indicating the stream location
+- `species`: a character, indicating salamander species, where "do" = *Desmognathus ocoee*, "dq" = *Desmognathus quadramaculatus*, "ew" = *Eurycea wilderae*, "gp" = *Gyrinophilus porphyriticus*, "dm" = *Desmognathus monticola*
+- `mark`: individual visual identifier code
+- `total_length`: a number indicating total salamander body length (millimeters)
+- `wet_mass`: a number indicating salamander wet mass (grams)
+
+
+## Chapter 1: Introduction to missing data
+
+### What are missing values? 
+
+#### Exercise `r icon_think`
+
+#### Exercise `r icon_think`
+
+#### Exercise `r icon_think`
+
+### How does R handle missing values?
+
+A helpful to thing to remember is that a *missing value* is an *unknown value* -- that means that outcomes of mathematical operations involving a missing value also result in a missing value. We can choose to ignore missing values in calculations using arguments to omit them, for example `na.rm = TRUE`, but this should be a careful and intentional decision, with an understanding of how omitting those `NA`s could impact your analyses. In the following examples, **predict the outcome of operations involving `NA`**. 
+
+#### Exercise `r icon_choose`
+
+```{r na-sum}
+  question("What is the output of `3.2 + NA`?",
+    answer("3.2", message = "Can you know the sum if one of the values (NA) is unknown?"),
+    answer("`FALSE`", message = "Is this a logical statement?"),
+    answer("`Inf`", message = "If the value of `NA` is unknown, would the result be infinite?"),
+    answer("`NA`", correct = TRUE, message = "That's right - the outcome of a mathematical operation with an unknown value is also unknown")
+  )
+```
+
+#### Exercise `r icon_choose`
+
+The data frame below is stored as `cats`: 
+
+```{r, echo = FALSE}
+cats <- tribble(
+  ~name, ~color, ~weight_lbs,
+  "Buffalo", "calico", 14.3,
+  "Smaug", "gray", 9.1,
+  "Tangerine", "orange", NA,
+  "Georgia", "white", 10.2
+)
+
+cats %>% 
+  kable() %>% 
+  kable_styling(full_width = FALSE, position = "left")
+```
+
+
+```{r na-mean}
+  question("What is the output of `mean(cats$weight_lbs)`?",
+    answer("`NA`", correct = TRUE, message = "That's right! The value of the `NA` is unknown, so we can't know the mean of that column if it's included."),
+    answer("11.2", message = "Can you know the mean value of a column if it contains unknown missing values?"),
+    answer("ERROR: cannot perform operation with `NA`", message = "This operation won't return an error."),
+    answer("`NaN`", message = "`NaN` is for \"not a number\", not an unknown (missing) outcome.")
+  )
+```
+
+#### Exercise `r icon_choose`
+
+```{r na_rm}
+  question("Which of the following would return the mean of the 3 non-missing values in the  `weight_lbs` column from the `cats` data frame above?",
+    answer("`mean(cats$weight_lbs, NA = FALSE)`", message = "Check the documentation for the `mean()` function."),
+    answer("`mean(cats$weight_lbs) %>% drop_na()`", message = "What argument can you add within `mean()` to remove `NA` values from the calculation?"),
+    answer("`mean(cats$weight_lbs, na.rm = TRUE)`", correct = TRUE, message = "That's right! The default `NA` behavior in `mean()` is `na.rm = FALSE`, but we can override that."),
+    answer("`na.omit(mean(cats$weigth_lbs))`", message = "What argument can you add within `mean()` to remove `NA` values from the calculation?")
+  )
+```
+
+#### Exercise `r icon_think`
+
+Why do you think a developer may have chosen the default of `na.rm = FALSE` in the `mean()` (and other) functions, instead of defaulting to `na.rm = TRUE`? 
+
+### Do my data contain missing values? 
+
+We can use `any_na()` and `are_na()` from the `naniar` package to detect missing values in our data. 
+
+- `any_na()`: Are there *any* missing values? 
+- `are_na()`: *Which* values are missing? 
+
+#### Exercise `r icon_choose`
+
+```{r na-r}
+  question("Which of the following would R interpret as a missing value?",
+    answer("`\"missing\"`", message = "R uses to special characters to represent missings"),
+    answer("`\".\"`", message = "R uses to special characters to represent missings"),
+    answer("`NA`", correct = TRUE, message = "`NA` stands for Not Available"),
+    answer("`-9999`", , message = "R uses to special characters to represent missings")
+  )
+```
+
+#### Exercise `r icon_code`
+
+In the exercise code chunk below:
+
+a. Create a vector, `x`, which contains values `NA`, `NaN`, `Inf`, `"."`, and `"missing"`
+b. Use `any_na()` and `are_na()` to find and explore missing values in `x`.
+
+```{r find-missings, exercise = TRUE}
+
+```
+
+```{r find-missings-hint}
+# Create the vector x:
+x <-c(NA, NaN, Inf, ".", "missing")
+```
+
+```{r find-missings-solution}
+# Create the vector x:
+x <-c(NA, NaN, Inf,".","missing")
+
+# Check to see if there are missings: 
+any_na(x)
+
+# Check to see which values are missing: 
+are_na(x)
+```
+
+#### Exercise `r icon_code`
+
+In the exercise code chunk below:
+
+a. Create and store a vector called 'size' that contains the following elements: `2`, `10`, `4`, `NA`, `6.3`, `NA`
+b. Check to see if there are any missing values in the vector
+c. Check which values in the vector are missing
+
+```{r find-missings-2, exercise=TRUE}
+
+```
+
+```{r find-missings-2-hint}
+# You can create the size vector with:
+size <- c(2, 10, 4, NA, 6.3, NA)
+
+# and remember you can use `any_na` and `are_na` to help
+```
+
+```{r find-missings-2-solution}
+# You can create the size vector with:
+size <- c(2, 10, 4, NA, 6.3, NA)
+
+# Check for any missing values:
+any_na(size)
+
+# Check which values are missing:
+are_na(size)
+```
+
+#### Exercise `r icon_code`
+
+A small dataset stored as `pie` contains the following: 
+
+```{r pie-kable, echo = FALSE}
+pie %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = "striped", 
+                full_width = FALSE,
+                position = "left")
+```
+
+In the code chunk below, write code to answer the following: 
+
+a. Are there *any* missing values in `pie`
+b. Which values in the `type` column are missing? 
+
+```{r pie-missing, exercise = TRUE}
+
+```
+
+```{r pie-missing-hint}
+# Reminder: use any_na(data) to identify if there are **any** missing values
+```
+
+```{r pie-missing-solution}
+# Reminder: use any_na(data) to identify if there are **any** missing values
+any_na(pie)
+
+# Reminder: use $ to specify a single column from a data frame
+are_na(pie$type)
+```
+
+#### Exercise `r icon_think`
+
+Take a moment to look back at the missing values in previous dataset, `pie`. If you were presented with this data set to explore, think about the following considerations:
+
+- If you were asked to present a summary of the `pie` dataset, what accompanying advice would you provide with the summaries?
+- What sort of comparisons could you draw between pie type and price?
+- What sort of comparisons could you draw between bakery and price?
+- Do you know how many observations would be included if you fit a linear model like so: `lm(price ~ bakery + type, data = pie)` ? Is this enough?
+
+## Chapter 2: Missing data "gotchyas"
+
+There are a few surprising missing value behaviors in R, and it is useful to be aware of them. In the following exercises, **predict what will happen when we operate with missing values in R**.
+
+#### Exercise `r icon_choose`
+
+```{r na-operation-1}
+question("1 + NA returns:",
+  answer("1", message = "Hint: Math operations containing NA return NA"),
+  answer("0", message = "Hint: Math operations containing NA return NA"),
+  answer("NA", correct = TRUE, message = "Well done! Math operations containing NA return NA"),
+  answer("Error", message = "Hint: Math operations containing NA return NA")
+)
+```
+
+#### Exercise `r icon_choose`
+
+```{r na-operation-2}
+question("NA + NA returns:",
+  answer("NA", correct = TRUE, message = "Math operations containing NA return NA"),
+  answer("0", message = "Hint: Math operations containing NA return NA"),
+  answer("Error", message = "Hint: Math operations containing NA return NA"),
+  answer("NA NA", message = "Hint: Math operations containing NA return NA")
+)
+```
+
+#### Exercise `r icon_choose`
+
+```{r na-operation-3}
+question("NA | TRUE returns:",
+  answer("NA", message = "Hint: `|` is the logical operator, 'or' returning whichever side is TRUE"),
+  answer("Error", message = "Hint: `|` is the logical operator, 'or' returning whichever side is TRUE"),
+  answer("FALSE", message = "Hint: `|` is the logical operator, 'or' returning whichever side is TRUE"),
+  answer("TRUE", correct = TRUE, message = "Since `|` is the logical operator, 'or', it returns whichever side is TRUE. This is different to the math operators previously covered, and a good case to be aware of when working with NA values in R.")
+)
+```
+
+#### Exercise `r icon_choose`
+
+```{r na-operation-4}
+question("NA | FALSE returns:",
+  answer("0", message = "Hint: `|` is the logical operator, 'or' returning whichever side is TRUE"),
+  answer("TRUE", message = "Hint: `|` is the logical operator, 'or' returning whichever side is TRUE"),
+  answer("FALSE", correct = TRUE, message = "Since `|` is the logical operator, 'or', it returns whichever side is TRUE. Since neither side is TRUE, it returns NA. This is different to the math operators previously covered, and a good case to be aware of when working with NA values in R."),
+  answer("NULL", message = "Hint: `|` is the logical operator, 'or' returning whichever side is TRUE")
+)
+```
+
+For the following questions, predict the outcome of the operation that includes `NaN`. Remember, you can test these in the Console before submitting your answer! 
+
+#### Exercise `r icon_choose`
+
+```{r nan-operation-1}
+question("NaN + NA returns:",
+  answer("NaN", correct = TRUE, message = "Caveat: NaN + NA can either return `NA` or `NaN`. This is due to a hardware issue. It is important to be aware of this!"),
+  answer("NA", correct = TRUE, message = "Caveat: NaN + NA can either return `NA` or `NaN`. This is due to a hardware issue. It is important to be aware of this!"),
+  answer("NULL"),
+  answer("Error")
+)
+```
+
+#### Exercise `r icon_choose`
+
+```{r nan-operation-2}
+question("NA + NaN returns:",
+  answer("NaN", correct = TRUE, message = "Caveat: NaN + NA can either return `NA` or `NaN`. This is due to a hardware issue. It is important to be aware of this!"),
+  answer("NA", correct = TRUE, message = "Caveat: NaN + NA can either return `NA` or `NaN`. This is due to a hardware issue. It is important to be aware of this!"),
+  answer("NULL"),
+  answer("Error")
+)
+```
+
+#### Exercise `r icon_choose`
+
+```{r nan-operation-3}
+question("is.na(NaN) returns:",
+  answer("NaN", "Hint: `is.na` returns TRUE or FALSE"),
+  answer("FALSE", "Hint: `is.na` returns TRUE or FALSE"),
+  answer("NA", message = "Hint: `is.na` returns TRUE or FALSE"),
+  answer("TRUE", correct = TRUE, message = "This is because `NA` is also considered 'not a number' as well.")
+)
+```
+
+#### Exercise `r icon_choose`
+
+```{r nan-operation-4}
+question("is.na('NaN') returns:",
+  answer("TRUE", message = "Hint: 'NaN' is technically a character"),
+  answer("NULL", message = "Hint: is.na returns TRUE or FALSE"),
+  answer("FALSE", correct = TRUE, message = "'NaN' is indeed a character here, so not NA"),
+  answer("Error", message = "Hint: is.na returns TRUE or FALSE")
+)
+```
+
+## Chapter 3: Explore missing values
+
+### Explore "big picture" missingness 
+
+One of the first things that you will want to check with a new dataset is if there are any missing missing values, and **how many there are**. The most efficient way to count the total number of missing values in R is with the `n_miss()` function. Similarly, the `prop_miss()` function returns the **proportion of missing values** in the data.
+
+You can also find the complement to these - how many **complete** values there are - using `n_complete()` and `prop_complete()`. 
+
+In these exercises, you will practice finding the number and proportion of missing values in data. 
+
+#### Exercise `r icon_code`
+
+The first 10 lines (of 100 total) from a data, `dat_hw`, containing **h**eights and **w**eights is shown below: 
+
+```{r dat-hw-kable, echo = FALSE}
+head(dat_hw, 10) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = "striped", 
+                full_width = FALSE)
+```
+
+In the code chunk below, complete the following: 
+
+a. Use `n_miss()` on `dat_hw` to count the total number of missing values in the data frame
+b.  Use `n_miss()` to find the number of missing values in the `weight` column of `dat_hw`. (Reminder, you can access the `weight` column with `dat_hw$weight`. 
+
+```{r n-miss, exercise = TRUE}
+
+```
+
+```{r n-miss-solution}
+# Find the total number of missing values in dat_hw:
+n_miss(dat_hw)
+
+# Find the number of missing values in the weight column: 
+n_miss(dat_hw$weight)
+```
+
+#### Exercise `r icon_code`
+
+Using the `dat_hw` data frame shown above, find the proportion of missing values in both the entire data frame *and* in the `weight` column using `prop_miss()`.
+
+```{r prop-miss, exercise = TRUE}
+
+```
+
+```{r prop-miss-solution}
+# Proportion values missing in entire dat_hw data frame:
+prop_miss(dat_hw)
+
+# Proportion values missing in the weight column:
+prop_miss(dat_hw$weight)
+```
+
+#### Exercise `r icon_code`
+
+Using the `dat_hw` data shown above find:
+
+a. the *number* of complete values in the data frame
+b. the *proportion* of complete values in the data frame
+
+```{r n-complete, exercise = TRUE}
+
+```
+
+```{r n-complete-solution}
+# Find the number of complete values in dat_hw
+n_complete(dat_hw)
+
+# Find the proportion of complete values in dat_hw
+prop_complete(dat_hw)
+```
+
+### Visualising missingness patterns
+
+Several additional ways to visualize patterns of missingness are:
+
+* `vis_miss()`: overview visualization of missingness
+* `gg_miss_upset()`: Visualize co-occurrence of missing values
+* `gg_miss_fct()`: Create a heatmap of missingness for a specified factor
+
+The `vis_miss()` function creates an overview visualization of missingness in the data. It also includes an option to cluster rows based on missingness (`cluster = TRUE`), as well as options for sorting columns based on proportion of missingness (`sort_miss = TRUE`).
+
+In these exercises, we will return to the `salamanders` data. The first 10 rows of the data are shown below as a reminder: 
+
+```{r salamander-kable-2}
+salamander_kable
+```
+
+#### Exercise `r icon_code`
+
+Use `vis_miss()` to create an overview visualization of missingness in `salamanders`:
+
+```{r vis-miss, exercise = TRUE}
+
+```
+
+```{r vis-miss-solution}
+vis_miss(salamanders)
+```
+
+#### Exercise `r icon_code`
+
+Use `vis_miss()` to visualize `salamanders` missingness as above, but adding the argument `cluster = TRUE` to cluster cases by missingness:
+
+```{r vis-miss-cluster, exercise = TRUE}
+
+```
+
+```{r vis-miss-cluster-hint}
+vis_miss(______, ______ = TRUE)
+```
+
+```{r vis-miss-cluster-solution}
+vis_miss(salamanders, cluster = TRUE)
+```
+
+#### Exercise `r icon_code`
+
+Use `vis_miss()` to visualize missingness in `salamanders`, including the argument `sort_miss = TRUE` to sort variables by missingness (highest-to-lowest, left to right):
+
+```{r vis-miss-sort, exercise = TRUE}
+
+```
+
+```{r vis-miss-sort-hint}
+vis_miss(______, ______ = TRUE)
+```
+
+```{r vis-miss-sort-solution}
+vis_miss(salamanders, sort_miss = TRUE)
+```
+
+#### Exercise `r icon_code`
+
+Explore patterns in missingness co-occurrence for `salamanders` using `gg_miss_upset()`: 
+
+```{r gg-miss-upset, exercise = TRUE}
+
+```
+
+```{r gg-miss-upset-hint}
+gg_miss_upset(______)
+```
+
+```{r gg-miss-upset-solution}
+gg_miss_upset(salamanders)
+```
+
+#### Exercise `r icon_code`
+
+With the `salamanders` dataset, explore how missingness changes across *species* using `gg_miss_fct()`. Reminder: you will need to specify a variable here as the "factor" (e.g. `fct = this_variable`). 
+
+```{r gg-miss-fct, exercise = TRUE}
+
+```
+
+```{r gg-miss-fct-hint}
+gg_miss_fct(______, fct = ______)
+```
+
+```{r gg-miss-fct-solution}
+gg_miss_fct(salamanders, fct = species)
+```
+
+#### Bigger Picture
+
+```{r dat-hw-cor}
+dat_hw_cor <- cor(dat_hw, use = "complete.obs")
+```
+
+If you are presented the following statistics about `dat_hw`:
+
+- Correlation between Height and Weight is `r dat_hw_cor[2]`.
+- The summary of height and weight are:
+
+```{r dat-hw-summary}
+summary(dat_hw)
+```
+
+What sort of questions or concerns might you have about the missing data? How do you think it might impact the statistics? How would you go about assessing what the impact of the missingness is? Would you trust the statistics? Why, or why not? 
+
+### Missingness by variables and cases
+
+#### Exercise `r icon_code`
+
+Calculate summaries of missingness in the `salamanders` dataset for all *variables* using the `miss_var_summary()` function.
+
+```{r miss-var-summary, exercise = TRUE}
+salamanders
+```
+
+```{r miss-var-summary-hint}
+# Pass salamanders into the miss_var_summary() function
+```
+
+```{r miss-var-summary-solution}
+# miss_var_summary(salamanders)
+```
+
+Stop and pause here and ask yourself :
+
+- "What do you learn?" 
+- "Which variables have the most missings?"
+- "Are there missings in all variables?"
+
+#### Exercise `r icon_code`
+
+Calculate summaries of missingness in the `salamanders` data for *cases* (rows) using the `miss_case_summary()` function.
+
+```{r case-miss-summary-1, exercise = TRUE}
+
+```
+
+```{r case-miss-summary-1-hint}
+# Hint: pass salamanders to the miss_case_summary() function
+```
+
+```{r miss-case-summary-1-solution}
+# miss_case_summary(salamanders)
+```
+
+Stop and pause here and ask yourself 
+
+- "What do you learn?" 
+- "Which cases have the most missings?"
+- "Are there missings in all variables?"
+
+#### Exercise `r icon_code`
+
+In the examples above, we used `miss_var_summary()` and `miss_case_summary()` to summarize the overall missigness within variables or cases. We may want to dig a bit deeper into patterns of missingness and ask how missingness varies between groups, for example between salamander species. We can use both `miss_var_summary()` and `miss_case_summary()` in combination with `dplyr::group_by()` to explore missingness within groups. 
+
+The general structure will look like this (where *VAR* here is any variable name you choose to group by, and `miss_var_summary()` can be switched to `miss_case_summary()`: 
+
+```
+data %>% 
+  group_by(VAR) %>% 
+  miss_var_summary()
+```
+
+In the code chunk below, write code that returns a summary of missingness within each *variable*, evaluated for each different group in the *species* column:
+
+```{r miss-var-summary-group, exercise = TRUE}
+
+```
+
+```{r miss-var-summary-group-hint}
+salamanders %>% 
+  group_by(-----) %>% 
+  miss_var_summary()
+```
+
+```{r miss-var-summary-group-solution}
+salamanders %>% 
+  group_by(species) %>% 
+  miss_var_summary()
+```
+
+#### Exercise `r icon_code`
+
+In the code chunk below, write code that returns a summary of missingness within each *case*, evaluated for each different group in the *stream_site* column:
+
+```{r miss-case-summary-group, exercise = TRUE}
+
+```
+
+```{r miss-case-summary-group-hint}
+salamanders %>% 
+  group_by(------) %>% 
+  miss_case_summary()
+```
+
+```{r miss-case-summary-solution}
+salamanders %>% 
+  group_by(stream_site) %>% 
+  miss_case_summary()
+```
+
+#### Exercise `r icon_code`
+
+The summaries of missingness calculated above give us the number and percentage of missing observations for cases and variables. Another way to summarise missingness is by tabulating the number of times that there are 0, 1, 2, 3 (etc.) missing values in a variable or case. 
+
+In this exercise, we will tabulate the number of missing values in each case and variable using `miss_var_table()` and `miss_case_table()`, respectively. Then, we will combine the functions with `dplyr::group_by` to explore the summaries within groups. 
+
+Tabulate missing values by *variable* in `salamanders` using 
+`miss_var_table()`:
+
+```{r miss-var-table, exercise = TRUE}
+
+```
+
+```{r miss-var-table-hint}
+Pass `salamanders` to the `miss_var_table()` function
+```
+
+```{r miss-var-table-solution}
+miss_var_table(salamanders)
+```
+
+#### Exercise `r icon_code`
+
+Tabulate missing values by *case* in `salamanders` using `miss_case_table()`:
+
+```{r miss-case-table, exercise = TRUE}
+
+```
+
+```{r miss-case-table-hint}
+Pass `salamanders` to the `miss_case_table()` function
+```
+
+```{r miss-case-table-solution}
+miss_case_table(salamanders)
+```
+
+#### Exercise `r icon_code`
+
+Tabulate missingness by *case*, within each *species* of salamander, using a combination of `dplyr::group_by()` and `miss_case_table()`:
+
+```{r miss-case-table-group, exercise = TRUE}
+
+```
+```{r miss-case-table-group-hint}
+salamanders %>% 
+  group_by(------) %>% 
+  miss_case_table()
+```
+
+```{r miss-case-table-group-solution}
+salamanders %>% 
+  group_by(species) %>% 
+  miss_case_table()
+```
+
+#### Exercise `r icon_code`
+
+Tabulate missingness in `salamanders` by *variable*, within each *stream_site*, using a combination of `dplyr::group_by()` and `miss_var_table()`:
+
+```{r miss-var-table-group, exercise = TRUE}
+
+```
+
+```{r miss-var-table-group-hint}
+salamanders %>% 
+  group_by(_______) %>% 
+  miss_var_table()
+```
+
+```{r miss-var-table-group-solution}
+salamanders %>% 
+  group_by(stream_site) %>% 
+  miss_var_table()
+```
+
+### Missingness in spans and streaks
+
+Some summaries of missingness are particularly useful for different types of data. For example, `miss_var_span()` and `miss_var_run()` are most useful when you want to investigate *spans* and *streaks* of missingness in your data.
+
+* `miss_var_span()` calculates the number of missing values in a specified variable for a repeating span. This is really useful in time series data, to look for weekly (7 day) patterns of missingness
+
+* `miss_var_run()` calculates the number of "runs" or "streaks" of missingness. This is useful to find unusual patterns of missingness, for example, you might find a repeating pattern of 5 complete and 5 missings.
+
+Both `miss_var_span()` and `miss_var_run()` work with `dplyr::group_by`.
+
+In these exercises, we use the `pedestrian` dataset from `naniar`. The `pedestrian` data contains hourly counts of pedestrians from 4 sensors around Melbourne, Australia.  These sensors are: Birrarung Marr, Bourke Street Mall, Flagstaff station, and Spencer St-Collins St (south), recorded from January 1st 2016 at 00:00:00 to December 31st 2016 at 23:00:00. The data is made free and publicly available from https://data.melbourne.vic.gov.au/Transport-Movement/Pedestrian-volume-updated-monthly-/b2ak-trbp
+
+**VARIABLES**
+
+- **hourly_counts**: (integer) the number of pedestrians counted at that sensor at that time
+- **date_time**: (POSIXct, POSIXt) The time that the count was taken
+- **year**: (integer) Year of record
+- **month**: (factor) Month of record as an ordered factor (1 = January, 12 = December)
+- **month_day**: (integer) Full day of the month
+- **week_day**: (factor) Full day of the week as an ordered factor (1 = Sunday, 7 = Saturday)
+- **hour**: (integer) The hour of the day in 24 hour format
+- **sensor_id**: (integer) the id of the sensor
+- **sensor_name**: (character) the full name of the sensor
+
+The first 10 lines of the simplified data, stored as `pedestrian`, are shown below:
+
+```{r pedestrian-kable}
+pedestrian %>% 
+  head(10) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = "striped", 
+                full_width = FALSE)
+```
+
+#### Exercise `r icon_code`
+
+Summarize missingness over spans in the `hourly_counts` variable in `pedestrian` using `miss_var_span()`, for a span of 4000:
+
+```{r miss-var-span, exercise = TRUE}
+
+```
+
+```{r miss-var-span-hint}
+miss_var_span(data = pedestrian, 
+              var = _______, 
+              span_every = _______)
+```
+
+```{r miss-var-span-solution}
+miss_var_span(data = pedestrian,
+              var = hourly_counts,
+              span_every = 4000)
+```
+
+#### Exercise `r icon_code`
+
+Summarize *runs* (streaks) of missingness in the `hourly_counts` variable of `pedestrian` using `miss_var_run`:
+
+```{r miss-var-run, exercise = TRUE}
+
+```
+
+```{r miss-var-run-hint}
+miss_var_run(data = ______, var = ______)
+```
+
+```{r miss-var-run-solution}
+miss_var_run(data = pedestrian, var = hourly_counts)
+```
+
+#### Exercise `r icon_code`
+
+Summarize the *runs* streaks of missing values within each *month* (hint: `group_by()`) for the `hourly_counts` variable in `pedestrian`:
+
+```{r miss-var-run-group, exercise = TRUE}
+
+```
+
+```{r miss-var-run-group-hint}
+pedestrian %>% 
+  group_by(_______) %>% 
+  miss_var_run(var = _______)
+```
+
+```{r miss-var-run-group-solution}
+pedestrian %>% 
+  group_by(month) %>% 
+  miss_var_run(var = hourly_counts)
+```
+
+#### Exercise `r icon_code`
+
+Summarize missingness **by month** for the `hourly_counts` variable within spans of 2000 observations in the `pedestrian` data: 
+
+```{r miss-var-span-group, exercise = TRUE}
+
+```
+
+```{r miss-var-span-group-hint}
+pedestrian %>% 
+  group_by(______) %>% 
+  miss_var_span(var = ______, span_every = ______)
+```
+
+```{r miss-var-span-group-solution}
+pedestrian %>% 
+  group_by(month) %>% 
+  miss_var_span(var = hourly_counts, span_every = 2000)
+```
+
+## Chapter 4: Cleaning missing data
+
+We have a dataset with missing values coded as `"N/A"`, `"missing"`, and `"na"`. Before we replace these "hidden" missing values (those that R will not recognize as missing) with `NA`, we should explore how extensively they occur in our data.
+
+### Find and replace missing values
+
+We can use `miss_scan_count()` to count the possible missings in our data. In the following examples, we will search for missing values in the `pacman` data, which contains six variables:
+
+* `year`: year score recorded
+* `month`: month score recorded
+* `day`: day score recorded
+* `initial`: player initials
+* `score`: pacman score
+* `country`: player country
+
+The first 5 lines of `pacman` are shown below for reference: 
+
+```{r}
+head(pacman,5) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+#### Exercise `r icon_code`
+
+For the `pacman` data, use `miss_scan_count()` to search for records of missingness stored as `"N/A"`. Reminder: include argument `search = "____"` to specify what form of a hidden missing you are searching for. 
+
+```{r miss-scan-count-1, exercise = TRUE}
+
+```
+
+```{r miss-scan-count-1-hint}
+miss_scan_count(data = ____, search = ____)
+```
+
+```{r miss-scan-count-1-solution}
+miss_scan_count(data = pacman, search = "N/A")
+```
+
+#### Exercise `r icon_code`
+
+For the `pacman` data, use `miss_scan_count()` to search for missing values that appear as `" "` (a single space). 
+
+```{r miss-scan-count-2, exercise = TRUE}
+
+```
+
+```{r miss-scan-count-2-hint}
+miss_scan_count(data = _____, search = ____)
+```
+
+```{r miss-scan-count-2-solution}
+miss_scan_count(data = pacman, search = " ")
+```
+
+#### Exercise `r icon_code`
+
+In `pacman`, search for `"N/A"`, `"missing"`, `"na"`, and `" "` all at once using `miss_scan_count()`. Reminder: use `list()` to search or multiple sneaky missings in the same line of code.
+
+```{r miss-scan-count-3, exercise = TRUE}
+
+```
+
+```{r miss-scan-count-3-hint}
+miss_scan_count(data = _____, search = list(___, ___, ___, ___))
+```
+
+```{r miss-scan-count-3-solution}
+miss_scan_count(data = pacman, search = list("N/A", "missing", "na", " "))
+```
+
+Continuing from the previous exercises, we now know that we have a few strange missing values in `pacman`. We need to **replace** these "hidden" recorded missing values with `NA` - which R will recognize as a truly missing value - using the `replace_with_na()` function, and scoped variants. 
+
+In the following exercises, practicing replacing one or more hidden missing values (e.g. `"N/A"`, `"na"`, etc.) with `NA` for one or more variables in the data. 
+
+#### Exercise `r icon_code`
+
+For the `pacman` dataset, use `replace_with_na()` to replace `"N/A"` with `NA` in the `score` variable. Store as a new data frame called `score_clean`. 
+
+Then, test to ensure that you have removed (i.e., replaced with `NA`) all `"NA"`s from `score` using `miss_scan_count()`. 
+ 
+```{r replace-with-na, exercise = TRUE}
+
+```
+
+```{r replace-with-na-hint}
+score_clean <- replace_with_na(_____, replace = list(score = ___))
+```
+
+```{r replace-with-na-solution}
+# Replace all "N/A" in the score column with 'NA'
+score_clean <- replace_with_na(pacman, replace = list(score = "N/A"))
+
+# Check to ensure that there are no remaining "N/A" in score (checks all variables):
+miss_scan_count(score_clean, search = list("N/A"))
+```
+
+#### Exercise `r icon_code`
+
+Starting from the `pacman` data, create a new data framed stored as `pacman_clean` in which any `"N/A"`, `"na"`, or `"missing"` entries are replaced with `NA` for both the `year` and `score` column. 
+
+```{r replace-with-na-2, exercise = TRUE}
+
+```
+
+```{r replace-with-na-2-hint}
+pacman_clean <- replace_with_na(______, replace = list(score = c(____, ____, ____),
+                                                       year = c(____, ____, ____)))
+```
+
+```{r replace-with-na-2-solution}
+# Replace "N/A", "na" and "missing" with NA in the year and score columns: 
+pacman_clean <- replace_with_na(pacman, replace = list(score = c("N/A", "na", "missing"),
+                                                       year = c("N/A", "na", "missing")))
+
+# Check to ensure they're all gone: 
+miss_scan_count(pacman_clean, search = list("N/A", "na", "missing"))
+```
+
+### Scoped variants of `replace_with_na()`
+
+To reduce code repetition when replacing values with `NA`, use the "scoped variants" of `replace_with_na()` to more efficiently specify *which* variables are included:
+
+* `replace_with_na_at()`: replace with `NA`, applied to variables specified by *name*
+* `replace_with_na_if()`: replace with `NA`, applied to variables of specified *class*
+* `replace_with_na_all()`: replace with `NA`, applied to *all* variables
+
+The syntax using scoped variants is a bit different. 
+
+For example, to replace all cases that are equal to "N/A":
+```
+~.x == "N/A"
+```
+
+And to replace all cases that have `"N/A"`, `"missing"`, `"na"`, or `" "`:
+```
+~.x %in% c("N/A", "missing", "na", " ")
+```
+
+Remember to check the function help documentation (e.g. `?replace_with_na_at`) for more information and examples. 
+
+#### Exercise `r icon_code`
+
+Starting with the `pacman` data, create a new data frame called `date_clean` in which you have replaced all `"N/A"`, `"na"` and `"missing"` records **in columns `year`, `month`, and `day`** with `NA` using `replace_with_na_at()`. 
+
+```{r replace-with-na-at, exercise = TRUE}
+
+```
+
+```{r replace-with-na-at-hint}
+date_clean <- replace_with_na_at(data = ______,
+                                 .vars = c("____","____","____"),
+                                 condition = ~.x %in% c("____","____","____")
+```
+
+```{r replace-with-na-at-solution}
+date_clean <- replace_with_na_at(data = pacman,
+                                 .vars = c("year","month","day"),
+                                 condition = ~.x %in% c("N/A","na","missing"))
+```
+
+#### Exercise `r icon_code`
+
+Starting from `pacman`, create a new data framed called `char_clean` in which you have replaced `"N/A"`, `"na"` and `"missing"` with `NA` in all **character columns** using `replace_with_na_if()`. 
+
+```{r replace-with-na-if, exercise = TRUE}
+
+```
+```{r replace-with-na-if-hint}
+char_clean <- replace_with_na_if(data = ____,
+                                 .predicate = ________,
+                                 condition = ~.x %in% c("___","___","___"))
+```
+```{r replace-with-na-if-solution}
+char_clean <- replace_with_na_if(data = pacman,
+                                 .predicate = is.character,
+                                 condition = ~.x %in% c("N/A","na","missing"))
+```
+
+#### Exercise `r icon_code`
+
+Starting from `pacman`, create a new data framed called `all_clean` in which you have replaced `"N/A"`, `"na"` and `"missing"` with `NA` in **all columns** using `replace_with_na_all()`. 
+
+```{r replace-with-na-all, exercise = TRUE}
+
+```
+
+```{r replace-with-na-all-hint}
+all_clean <- replace_with_na_all(data = _____,
+                                 condition = ~.x %in% c("____","____","____"))
+```
+
+```{r replace-with-na-all-solution}
+all_clean <- replace_with_na_all(data = pacman,
+                                 condition = ~.x %in% c("N/A","na","missing"))
+```
+
+#### Exercise `r icon_think`
+
+The `replace_with_na()` function and variants give us efficient ways to find and replace missing values recorded in different forms throughout our data. What are the limitations of `replace_with_na()`? How else might we check for records of missingness that are *not* in our search list?  
+
+## Chapter 5: Representing missing data
+
+### Motivation
+
+Throughout Chapter 3.1 Exercises, you will use the `oceanbuoys` dataset from the `naniar` package. The data are real-time measurements from moored buoys in the West Pacific Ocean, collected by the Tropical Atmosphere Ocean Project (source: http://www.pmel.noaa.gov/tao/data_deliv/deliv.html). 
+
+The first 10 lines of `oceanbuoys` is shown below for reference: 
+
+```{r}
+head(oceanbuoys, 10) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+### The shadow matrix
+
+Missing data can be tricky to think about, as missing values don't usually proclaim themselves for you, and instead hide amongst the weeds of the data. One way to help expose missing values is to think about every single value as binary - either **missing** or **not missing**.  
+
+The `as_shadow()` function in `naniar` transforms a dataframe into a shadow matrix, a special data format where all values are either missing (`NA`), or Not Missing (`!NA`). In the resulting shadow matrix, column names are the same as in the original data but with an added `_NA` suffix.
+
+#### Exercise
+
+Use `as_shadow()` to create the shadow matrix for `oceanbuoys`.
+
+```{r as-shadow, exercise = TRUE}
+
+```
+
+```{r as-shadow-solution}
+as_shadow(oceanbuoys)
+```
+
+#### Exercise
+
+The shadow matrix contains binary information indicating whether all values in a data frame are missing or non-missing. What function have we used previously to *visualize* the shadow matrix (e.g. a graph that visually indicates locations of missing and non-missing values)? 
+
+### Creating nabular data
+
+The `nabular()` function in `naniar` binds the shadow matrix to the original data, which is useful to compare data values to their missingness state. When the shadow matrix columns are bound to the regular data, the resulting combination is called *nabular* data.
+
+Create nabular data in the exercises below. 
+
+#### Exercise
+
+Use `nabular()` to create nabular data from the `oceanbuoys` data, retaining all variables whether or not they had missing values in the original data. 
+
+```{r nabular-all, exercise = TRUE}
+
+```
+
+```{r nabular-all-solution}
+nabular(oceanbuoys)
+```
+
+#### Exercise 
+
+Create nabular data for `oceanbuoys`, but only bind variables from shadow matrix that *do* contain `NA`s by adding the argument `only_miss = TRUE`. 
+
+```{r nabular-miss, exercise = TRUE}
+
+```
+
+```{r nabular-miss-hint}
+nabular(data = ______, ______ = ______)
+```
+
+```{r nabular-miss-solution}
+nabular(data = oceanbuoys, only_miss = TRUE)
+```
+
+### Data summaries with nabular data
+
+Now that you can create nabular data, let's use it to explore the data by calculating summary statistics in one variable *based on the missingness in another variable*.
+
+Use the following steps:
+
+1. Use `nabular()` to create nabular data
+2. Use `group_by()` and `summarise()` to find the mean (`mean()`) and standard deviation (`sd`) of variable values, grouped by whether or not *another* variable was missing
+
+#### Exercise
+
+In the code chunk below, write a piped sequence of code to: 
+
+- Create nabular data with `oceanbuoys`
+- Use `group_by()` to group by missingness of humidity (use the `humidity_NA` variable created in the nabular data)
+- Use `summarize()` to calculate the mean and standard deviation of east-west winds (`wind_ew`) in each group
+
+```{r nabular-group-ew, exercise = TRUE}
+
+```
+
+```{r nabular-group-ew-hint}
+oceanbuoys %>% 
+  nabular(____) %>% 
+  group_by(____) %>% 
+  summarize(mean_ew = mean(____),
+            sd_ew = sd(____))
+```
+
+```{r nabular-group-ew-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  group_by(humidity_NA) %>% 
+  summarize(mean_ew = mean(wind_ew),
+            sd_ew = sd(wind_ew))
+```
+
+#### Exercise
+
+Why might we be interested in summary statistics for one variable, based on *whether or not another variable is missing* (as in the exercise above)? Consider this question in two ways: 
+
+1. How can summary statistics with nabular data reveal relationships between missingness in one variable and *values* in another? 
+
+2. Think of a tangible example (from your work, or hypothetical) in which you might expect missingness in one variable to depend on the value of another variable. 
+
+#### Exercise
+
+In the code chunk below, write a piped sequence of code to: 
+
+- Create nabular data with `oceanbuoys`
+- Use `group_by()` to group by missingness of humidity (`humidity_NA`)
+- Use `summarize()` to calculate the mean and standard deviation of north-sound wind (`wind_ns`) in each group
+
+```{r nabular-group-ns, exercise = TRUE}
+
+```
+
+```{r nabular-group-ns-hint}
+oceanbuoys %>% 
+  nabular(____) %>% 
+  group_by(____) %>% 
+  summarize(mean_ew = mean(____),
+            sd_ew = sd(____))
+```
+
+```{r nabular-group-ns-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  group_by(humidity_NA) %>% 
+  summarize(mean_ew = mean(wind_ew),
+            sd_ew = sd(wind_ew))
+```
+
+#### Exercise
+
+Find the mean, standard deviation, and sample size (using `n()` within `summarize()`) for east-west winds (`wind_ew`), grouped by missingness in air temperature (`air_temp_c_NA`). 
+
+```{r nabular-group-1, exercise = TRUE}
+
+```
+
+```{r nabular-group-1-hint}
+oceanbuoys %>% 
+  nabular() %>% 
+  group_by(_____) %>% 
+  summarize(wind_ew_mean = _____(_____),
+            wind_ew_sd = _____(_____),
+            n_obs = ___())
+```
+
+```{r nabular-group-1-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  group_by(air_temp_c_NA) %>% 
+  summarize(wind_ew_mean = mean(wind_ew),
+            wind_ew_sd = sd(wind_ew),
+            n_obs = n())
+```
+
+#### Exercise
+
+Find the mean, standard deviation, and sample size (using `n()`) for east-west winds (`wind_ew`), grouped by missingness in both air temperature (`air_temp_c_NA`) **and** humidity (`humidity_NA`). 
+
+Reminder: group by multiple variables with `group_by(var1, var2)`.
+
+```{r nabular-group-2, exercise = TRUE}
+
+```
+
+```{r nabular-group-2-hint}
+oceanbuoys %>% 
+  nabular() %>% 
+  group_by(______, ______) %>% 
+  summarize(wind_ew_mean = ______(______),
+            wind_ew_sd = ______(______),
+            n_obs = ____())
+```
+
+```{r nabular-group-2-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  group_by(air_temp_c_NA, humidity_NA) %>% 
+  summarize(wind_ew_mean = mean(wind_ew),
+            wind_ew_sd = sd(wind_ew),
+            n_obs = n())
+```
+
+### Exploring conditional missings with `ggplot`
+
+In previous exercises, we found summary statistics for one variable based on missingness in another. In this section, we'll practice **visualizing** values based on missingness with nabular data, again using the `oceanbuoys` dataset.
+
+We'll start by reminding ourselves of where missing values are overall in `oceanbuoys` using `vis_miss()`, before creating other visualizations with `ggplot()`. 
+
+#### Exercise
+
+Use `vis_miss()` to explore an overall snapshot of missingness in `oceanbuoys`. Based on the visualization, answer: What variables appear to contain missing values? Do missing values appear clustered or randomly distributed throughout the variables? 
+
+```{r oceanbuoys-vis-miss, exercise = TRUE}
+
+```
+
+```{r oceanbuoys-vis-miss-hint}
+vis_miss(x = _______)
+```
+
+```{r oceanbuoys-vis-miss-solution}
+vis_miss(x = oceanbuoys)
+```
+
+#### Exercise
+
+Starting with the `oceanbuoys` data, complete the code below to visualize the distribution of `wind_ew` using a density plot with `ggplot()`, with distinct series based on missingness in `air_temp_c_NA`. 
+
+```{r nabular-density-1, exercise = TRUE}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes (x = ______, # Enter the variable you're plotting
+         color = ______)) + # Enter the variable you want to group series by
+  geom_density()
+
+```
+
+```{r nabular-density-1-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes (x = wind_ew, 
+         color = air_temp_c_NA)) + 
+  geom_density()
+
+```
+
+#### Exercise
+
+Starting with the `oceanbuoys` data and using the exercise above as a guide, write code to visualize the distribution of sea temperature (`sea_temp_c`) using a density plot in `ggplot()`, with distinct series based on missingness in humidity (`humidity_NA`). 
+
+```{r nabular-density-2, exercise = TRUE}
+
+```
+
+```{r nabular-density-2-hint}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = ______, # What variable values are you plotting?
+             color = ______)) + # Grouped by missingness in what variable? 
+  geom_density()
+```
+
+```{r nabular-density-2-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = sea_temp_c, 
+             color = humidity_NA)) +  
+  geom_density()
+```
+
+#### Exercise
+
+In the following exercises, we will further investigate how variable distributions differ based on missingness by faceting, which creates a separate graph panel for each level that exists within the specified faceting variable. 
+
+Reminder: to facet a `gg`-graph by variable (`var_name`), add `facet_wrap(~ var_name)`.
+
+Complete the code below to visualize the distribution of east-west wind (`wind_ew`) in the `oceanbuoys` data, using `geom_density()` and faceting by missingness in air temperature (`air_temp_c_NA`).
+
+```{r nabular-facet, exercise = TRUE}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = _______)) +
+  geom_density() +
+  facet_wrap(~ _______)
+```
+
+```{r nabular-facet-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = wind_ew)) +
+  geom_density() +
+  facet_wrap(~ air_temp_c_NA)
+```
+
+#### Exercise
+
+Starting with `oceanbuoys`, write code to visualize the distribution of north-south wind (`wind_ns`) with distict series based on missingness in humidity (`humidity_NA`), then facet by missingness in aire temperature (`air_temp_c_NA`). 
+
+```{r nabular-facet-2, exercise = TRUE}
+
+```
+
+```{r nabular-facet-2-hint}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = ______,
+             color = ______)) +
+  geom_density() +
+  facet_wrap(~ ______)
+```
+
+```{r nabular-facet-2-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = wind_ns,
+             color = humidity_NA)) +
+  geom_density() +
+  facet_wrap(~ air_temp_c_NA)
+```
+
+#### Exercise
+
+Previous exercises use `nabular` data along with density plots to explore the variation in a variable by the missingness of another. Here, we will use boxplots to further explore missingness in the `oceanbuoys` data.
+
+Reminder: The general structure of a boxplot in `ggplot()` is:
+
+```
+df %>% 
+ggplot(aes(x = _____, y = _____)) + 
+  geom_boxplot()
+```
+
+Create boxplots of east-west wind (`wind_ew`) values in `oceanbuoys` using `geom_boxplot()`, separated by missingness in air temperature (e.g. the other variable will be `air_temp_c_NA`).  
+
+```{r nabular-boxplot, exercise = TRUE}
+
+```
+
+```{r nabular-boxplot-hint}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = _____, y = _____)) +
+  geom_boxplot()
+```
+
+```{r nabular-boxplot-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = air_temp_c_NA, y = wind_ew)) +
+  geom_boxplot()
+```
+
+#### Exercise
+
+Visualize the distribution of north-south wind (`wind_ns`) values in `oceanbuoys` using  `geom_boxplot()`, with boxplots separated based on missingness in humidity (`humidity_NA` is the second variable). Then, facet by missingness in air temperature (`air_temp_c_NA`).
+
+```{r nabular-boxplot-facet, exercise = TRUE}
+
+```
+
+```{r nabular-boxplot-facet-hint}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = ______,
+             y = ______)) +
+  geom_boxplot() +
+  facet_wrap(~ ______)
+```
+
+```{r nabular-boxplot-facet-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = humidity_NA,
+             y = wind_ns)) +
+  geom_boxplot() +
+  facet_wrap(~ air_temp_c_NA)
+```
+
+### Exploring causes of missingness
+
+It can be useful to explore how missingness in one measured variable is related to the *value* of another measured variable. For example, we might ask: "Dragon tooth lengths more often missing for larger dragons?" or "Is animal height more often missing for animals with greater maximum speed?" In other words, we might want to investigate the relationship in missingness between two continuous quantitative variables to help us assess where and why values are missing. 
+
+Here, we will create scatterplots that reveal locations of missing values in one of two variables. Since the `geom_point()` geometry in `ggplot()` *removes* missing values and returns a warning, we will instead use the `geom_miss_point()` geometry in `naniar` to create a scatterplot **that also reveals the location of missing values.**
+
+Let's practice using this visualization with the `oceanbuoys` dataset.
+
+#### Exercise
+
+Visualize missingness in east-west wind (`wind_ew`) and air temperature (`air_temp_c`) using `geom_miss_point()`.
+
+```{r geom-miss-point-1, exercise = TRUE}
+
+```
+
+```{r geom-miss-point-1-hint}
+ggplot(data = ______,
+       aes(x = ______, y = ______)) +
+  geom_miss_point()
+```
+
+```{r geom-miss-point-1-solution}
+ggplot(data = oceanbuoys,
+       aes(x = wind_ew, y = air_temp_c)) +
+  geom_miss_point()
+```
+
+#### Exercise
+
+Building on code from the previous exercise, investigate relationships in missingness for `air_temp_c` and `wind_ew` from the `oceanbuoys` data in a scatterplot using `geom_miss_point`, then facet by `year` to explore annual differences.
+
+```{r geom-miss-point-2, exercise = TRUE}
+
+```
+
+```{r geom-miss-point-2-hint}
+ggplot(data = _____,
+       aes(x = _____, y = _____)) +
+  geom_miss_point() +
+  facet_wrap(~ _____)
+```
+
+```{r geom-miss-point-2-solution}
+ggplot(data = oceanbuoys,
+       aes(x = wind_ew, y = air_temp_c)) +
+  geom_miss_point() +
+  facet_wrap(~ year)
+```
+
+#### Exercise
+
+In the previous exercise, we faceted by `year` to explore missingness across different years in the data. We can also facet *by missingness* if we have prepared nabular data. 
+
+Recall: once we create nabular data (original data bound to the shadow matrix) using `nabular`, we have variables (ending in suffix `_NA`) that we can facet by. That means we can explore missingness between two variables with `geom_miss_point()` *based on whether or not another variable is missing*, using `facet_wrap()` or `facet_grid()`. 
+
+Generally, that will look something like this: 
+
+```
+df %>% 
+  nabular() %>% 
+  ggplot(aes(x = ___, y = ___)) +
+  geom_miss_point() +
+  facet_wrap(~ var_NA) 
+```
+
+Starting with the `oceanbuoys` data, use `geom_miss_point()` to visually explore how missingness in `wind_ew` versus `air_temp_c` is different based on missingness in `humidity`. 
+
+Hint: create nabular data, then facet by `humidity_NA`. 
+
+```{r geom-miss-point-3, exercise = TRUE}
+
+```
+
+```{r geom-miss-point-3-hint}
+oceanbuoys %>% 
+  _____() %>% 
+  ggplot(aes(x = _____, y = _____)) +
+  geom_miss_point() +
+  _____(~ _____)
+```
+
+```{r geom-miss-point-3-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = wind_ew, y = air_temp_c)) +
+  geom_miss_point() +
+  facet_wrap(~ humidity_NA)
+```
+
+#### Exercise
+
+We can facet by *more than one* variable using either `facet_wrap()` or `facet_grid()`, e.g. `facet_wrap(x ~ y)` will facet by variables `x` **and** `y`. 
+
+Building on the exercise above, visually explore how missingness in `wind_ew` versus `air_temp_c` is differs based on missingness in `humidity`, also separated by `year`. Hint: create the nabular data, then facet by `humidity_NA` **and** `year`.
+
+```{r geom-miss-point-4, exercise = TRUE}
+
+```
+
+```{r geom-miss-point-4-solution}
+oceanbuoys %>% 
+  nabular() %>% 
+  ggplot(aes(x = wind_ew, y = air_temp_c)) +
+  geom_miss_point() +
+  facet_wrap(humidity_NA ~ year)
+```
+
+## Chapter 6: Mechanisms of missingness
+
+## Chapter 7: Single imputation of missing data
+
+### Performing and tracking imputation
+
+We want to keep track of values we imputed. If we don't, it is very difficult to assess how good the imputed values are. We are going to practice imputing data and recreate visualizations in the previous set of exercises by imputing values below the range of the data. 
+
+This is a very useful way to help further explore missingness, and also provides the framework for imputing missing values.
+
+First, we are going to impute the data below the range using `impute_below_all()`, and then visualize the data. We notice that although we can see where the missing values are in this instance, we need some way to track them. The track missing data programming pattern can help with this. 
+
+### Getting started: impute missing values
+
+It is critical to keep track of imputed values so that we can assess how "good" they are. To start, we will replace missing values with *imputed values* in the `hares` dataset, which contains weight and hindfoot measurements for snowshoe hares. The first 10 lines of `hares` are shown below: 
+
+```{r}
+head(hares, 10)
+```
+
+### `impute_below()` functions
+
+The `impute_below()` function and scoped variants "impute all variables with missings to values shifted 10% below range," and includes jitter to avoid overplotting. The `impute_below()` functions are useful because they create some separation between imputed- and non-imputed values in the data, which can be explored further in visualizations. 
+
+Scoped variants of `impute_below()` include: 
+
+- `impute_below_all()`: apply imputation to all variables
+- `impute_below_at()`: to specify variables 
+- `impute_below_if()`: impute based on a predicate
+
+#### Exercise
+
+Use `impute_below_if()` to impute values below the range for the two numeric variables (`weight` and `hindft`) in `hares`. Store the resulting data frame as `hares_imputed`. **Hint:** `.predicate = is.numeric`. 
+
+```{r impute-below-if, exercise = TRUE}
+
+```
+
+```{r impute-below-if-hint}
+hares_imputed <- _____ %>% 
+  _____(.predicate = _____)
+```
+
+```{r impute-below-if-solution}
+hares_imputed <- hares %>% 
+  impute_below_if(.predicate = is.numeric)
+```
+
+#### Critical thinking exercise
+
+Explore at the `hares_imputed` data frame you created in the exercises above. Is there any indication of *which* values are imputed? Why would that concern you? If you saved the output as a CSV and sent it to a collaborator, would they know which values started off as `NA`?
+
+#### Exercise
+
+Using the `hares_imputed` data frame created in the previous exercise, plot hind foot length (`hindft`) versus weight (`weight`). 
+
+```{r hares-imputed-gg, exercise = TRUE}
+
+```
+
+```{r hares-imputed-gg-hint}
+ggplot(data = hares_imputed, aes(x = _____, y = _____)) +
+  geom_point()
+```
+
+```{r hares-imputed-gg-solution}
+ggplot(data = hares_imputed, aes(x = hindft, y = weight)) +
+  geom_point()
+```
+
+
+#### Critical thinking exercise
+
+In the graph you created in the exercise above, and based on what you know about how `impute_below()` works, which clusters of points are associated with missing values in the original `hares` dataset?
+
+### Track missing values
+
+In the exercises above, you imputed values for `hares` weight and hind foot length. But from the resulting data frame and graph, we can see it would be difficult to know which values are imputed and which exist in the original data. It is **very important** to keep track of which values are imputed. 
+
+We can track imputed values using the following steps:
+
+1. Create nabular data with `nabular`
+2. Impute values 
+3. Add labels with `add_label_shadow()` to track imputed values
+
+The general structure will look something like this: 
+
+```
+df %>% 
+  nabular() %>% 
+  impute_*() %>% 
+  add_label_shadow()
+```
+
+#### Exercise
+
+Write code to impute values (by `impute_below_if()`) for the numeric values `weight` and `hindft` in `hares`, while tracking imputed values. Store the output as `hares_tracked`.
+
+Explore `hares_tracked` (recall: run `hares_tracked` on a separate line of code to view the output). Notice that the nabular data reveals which values were *originally* `NA`, and an additional label (created by `add_label_shadow()`) indicates complete or incomplete cases in the original data frame. 
+
+```{r track-imputed, exercise = TRUE}
+
+```
+
+```{r track-imputed-hint}
+hares_tracked <- hares %>% 
+  _______() %>% 
+  impute_below_if(.predicate = _______) %>% 
+  _______()
+```
+
+```{r track-imputed-solution}
+hares_tracked <- hares %>% 
+  nabular() %>% 
+  impute_below_if(.predicate = is.numeric) %>% 
+  add_label_shadow()
+```
+
+Congratulations! Using the process of creating `nabular()` data, then imputing values and adding a shadow label, you are able to track imputed values in your data. 
+### Visualizing tracked imputed values
+
+Now that we know how to track imputed values, we can more easily distinguish them from non-missing values in visualizations. Here, we will manuall re-create the type of scatterplot graph we made using `geom_miss_point()` in Chapter 3 to reveal locations of missing values. 
+
+#### Exercise
+
+The first 5 lines of `hares_tracked`, which you created in the previous exercise, are shown below: 
+
+```{r}
+head(hares_tracked, 5)
+```
+
+Starting with `hares_tracked`, create a scatterplot of hind foot length (`hindft`) versus weight (`weight`) in `ggplot`, indicating imputed values by updating point color based on the `any_missing` variable. 
+
+```{r track-missing-gg, exercise = TRUE}
+
+```
+
+```{r track-missing-gg-hint}
+ggplot(data = ______, aes(x = ______, y = ______)) +
+  geom_point(aes(color = ______))
+```
+
+```{r track-missing-gg-solution}
+ggplot(data = hares_tracked, aes(x = hindft, y = weight)) +
+  geom_point(aes(color = any_missing))
+```
+
+#### Exercise
+
+Starting with `hares`, use `geom_miss_point()` to visualize missing values in a scatterplot of `hindft` versus `weight`. Compare to your output from the previous graph. 
+
+```{r compare-geom-miss-point, exercise = TRUE}
+
+```
+
+```{r compare-geom-miss-point-hint}
+ggplot(data = hares, aes(x = ______, y = ______)) +
+  ______()
+```
+
+```{r compare-geom-miss-point-solution}
+ggplot(data = hares, aes(x = hindft, y = weight)) +
+  geom_miss_point()
+```
+Cool! Now you know the mystery behind how `geom_miss_point()` works "behind the scenes" to save you some time when tracking missing values! 
+
+### Histogram of imputed values
+
+Now that we can recreate the useful `geom_miss_point()` graph, let's explore how we explore tracked missingness to other visualizations, such as histograms.
+
+To create histograms that show the distributions of imputed and non-imputed values in a variable, we will use `geom_histogram()` with the histogram **fill** aesthetic updated to differ based on the `*_NA` version of the variable in nabular data. 
+
+Generally, that code can look something like this: 
+
+1. Create nabular data
+2. Create a histogram of the variable of interest
+3. Update fill aesthetic based on the `*_NA` nabular addendum for that variable 
+
+#### Exercise
+
+Starting from `hares_tracked` (shown above), create a histogram to explore the distributions of imputed and non-imputed values of `hindft` by varying  fill color based on the variable `hindft_NA`.
+
+```{r hares-na-histogram, exercise = TRUE}
+
+```
+
+```{r hares-na-histogram-hint}
+ggplot(______, aes(x = ______, fill = ______)) +
+  geom_histogram()
+```
+
+```{r hares-na-histogram-solution}
+ggplot(hares_tracked, aes(x = hindft, fill = hindft_NA)) +
+  geom_histogram()
+```
+
+#### Exercise
+
+Starting from `hares_tracked` (shown above), create a histogram to explore the distributions of imputed and non-imputed values of `weight` by varying  fill color based on the variable `weight_NA`.
+
+```{r hares-na-histogram-2, exercise = TRUE}
+
+```
+
+```{r hares-na-histogram-2-hint}
+ggplot(data = ______, aes(x = ______, fill = ______)) +
+  geom_histogram()
+```
+
+```{r hares-na-histogram-2-solution}
+ggplot(data = hares_tracked, aes(x = weight, fill = weight_NA)) +
+  geom_histogram()
+```
+
+#### Critical thinking exercise
+
+The `impute_below()` function and scoped variants are useful for exploring missing values, but is **not** recommended to impute meaningful values for subsequent in modeling or analyses. Considering the histograms for hare weights (imputed and non-imputed values) created in the exercise above, what do you notice about the imputed values for hare weight from `impute_below_if()`? Would you ever use these imputed values in actual data analyses or modeling? 
+
+### Put it together
+
+In the exercises above, you have practiced creating then tracking, imputed values, allowing you to further explore missingness. Here, practice what you have learned with a new data set, `salamanders_sm`. 
+
+The first 10 lines of stored data frame `salamanders_sm` (a subset of the `salamanders` data) are shown below. Variables are: 
+
+- `date`: measurement date
+- `species`: abbreviation for salamander species
+- `total_length`: total salamander length 
+- `wet_mass`: wet salamander mass
+
+```{r}
+head(salamanders_sm, 10)
+```
+
+#### Exercise
+
+In the code chunk below, write code to complete the following: 
+
+**STEP 1**
+
+From `salamanders_sm`, create a new data frame called `sal_impute` that contains:
+
+- nabular data to track original missingness
+- imputed values for `total_length` and `wet_mass`, using `impute_below_if()`
+- a column indicating if original cases are complete or incomplete using `add_label_shadow()`
+
+**STEP 2:** 
+
+With `sal_impute`, create the following visualizations: 
+
+- A histogram of salamander total length, with fill color updated based on whether the value is imputed or non-imputed
+- A scatterplot of salamander total length versus wet mass, with color varying based on whether or not the original case was incomplete, and faceting by salamander species
+
+```{r salamander-tracker, exercise = TRUE}
+
+```
+
+```{r salamander-tracker-hint}
+# First, make `sal_impute` with tracked missingness:
+sal_impute <- salamanders_sm %>% 
+  _______() %>%  # Hint: make nabular data 
+  _______(.predicate = _______) %>%  # Hint: impute values
+  _______() # Hint: add shadow label
+
+sal_impute # Look at `sal_impute` after you've created it!
+
+# Create a histogram of `total_length`, indicating missingness
+ggplot(data = ______, aes(x = ______, fill = ______)) +
+  geom_histogram()
+
+# Create a scatterplot of `total_length` versus `wet_mass`, indicating incomplete cases with a different color, and facet by salamander species
+ggplot(data = ______, aes(x = ______, 
+                          y = ______, 
+                          color = ______)) +
+  geom_point() +
+  facet_wrap (~ ______)
+```
+
+```{r salamander-tracker-solution}
+# First, make `sal_impute` with tracked missingness:
+sal_impute <- salamanders_sm %>% 
+  nabular() %>%  # Hint: make nabular data 
+  impute_below_if(.predicate = is.numeric) %>%  # Hint: impute values
+  add_label_shadow() # Hint: add shadow label
+
+sal_impute # Look at `sal_impute` after you've created it!
+
+# Create a histogram of `total_length`, indicating missingness
+ggplot(data = sal_impute, aes(x = total_length, fill = total_length_NA)) +
+  geom_histogram()
+
+# Create a scatterplot of `total_length` versus `wet_mass`, indicating incomplete cases with a different color
+ggplot(data = sal_impute, aes(x = total_length, 
+                          y = wet_mass, 
+                          color = any_missing)) +
+  geom_point() +
+  facet_wrap(~ species)
+```
+
+Congratulations! Now you know how to track and visualize imputed values. In the next section, we'll ask: how *good* or *bad* are imputed values? 
+
+### Assessing imputation methods
+
+In the previous section, you used `impute_below()` and scoped variants to populate missing values with imputed ones ~10% below the range of selected variables. Through visualizations, it also became clear that these imputed values do not represent the data well, even creating impossible values at times (e.g. negative imputed values for hare weights). 
+
+In order to evaluate imputations, it is helpful to know what bad imputation looks like. Here, we will explore a typically bad imputation method: imputation using the mean value of a variable.
+
+### Green Lake water quality data
+
+In the exercises below, you will impute values for the water quality measurements (chlorophyll A, pH, temperature, nitrate concentration) at Green Lake 4, in Green Lakes Valley, Colorado using data measured by Diane Mcnight and Kelly Loria with Niwot Ridge LTER. 
+
+The first 10 lines of the stored `greenlake` data frame are shown below:
+
+```{r}
+head(greenlake, 10)
+```
+
+### Impute mean values
+
+Here, we will impute mean values with the `impute_mean()` function, and scoped variants. When imputing mean values, the mean for all existing (non-missing) values of a variable is calculated; that calculated value then replaces all missing values. 
+First, let's take a birds-eye-view look at missingness in `greenlake` using the `vis_miss()` function.
+
+#### Exercise
+
+Create an overview visualization of missingness in `greenlake` using `vis_miss()`. 
+
+```{r greenlake-vis-miss, exercise = TRUE}
+
+```
+
+```{r greenlake-vis-miss-hint}
+vis_miss(________)
+```
+
+```{r greenlake-vis-miss-solution}
+vis_miss(greenlake)
+```
+
+#### Exercise
+
+Impute the mean value for all variables in `greenlake` using `impute_mean_all()`, and track these imputed values by creating nabular data and with `add_label_shadow()` to record complete or incomplete cases in the original data. Store the output as `lakeimpute`.
+
+Make sure to look at `lakeimpute`, noticing that every missing value for each variable is populated with the *same value* - the mean of the original values for that variable. 
+
+```{r impute-mean, exercise = TRUE}
+
+```
+
+```{r impute-mean-hint}
+lakeimpute <- ______ %>% 
+  ______() %>% # Hint: make nabular data
+  ______() %>% # Hint: impute mean values for all variables
+  ______() # Hint: add column indicating if original case was complete
+```
+
+```{r impute-mean-solution}
+lakeimpute <- greenlake %>% 
+  nabular() %>% 
+  impute_mean_all() %>% 
+  add_label_shadow()
+
+lakeimpute
+```
+
+#### Exercise
+
+Starting from stored data `lakeimpute`, visualize imputed and non-imputed values for chlorophyll A (`chl_a`) in Green Lake 4 by creating a boxplot with missingness represented on the x-axis (hint: `x = chl_a_NA`), and the value in the `chl_a` column on the y-axis. 
+
+```{r chl-boxplot, exercise = TRUE}
+
+```
+
+```{r chl-boxplot-hint}
+ggplot(data = ______, aes(x = chl_a_NA, y = ______)) +
+  geom_boxplot()
+```
+
+```{r chl-boxplot-solution}
+ggplot(data = lakeimpute, aes(x = chl_a_NA, y = chl_a)) +
+  geom_boxplot()
+```
+
+#### Critical thinking exercise
+
+Based on what you know about `impute_mean()`, why does the boxplot for imputed values of Chlorophyll A in the graph created above appear as a single horizontal line? 
+
+#### Exercise
+
+Create a boxplot to visualize the distribution of imputed and non-imputed values for nitrate concentration (`nitrate`) in `lakeimpute`,
+
+```{r nitrate-box, exercise = TRUE}
+
+```
+
+```{r nitrate-box-hint}
+ggplot(data = ______, aes(x = nitrate_NA, y = ______)) +
+  geom_boxplot()
+```
+
+```{r nitrate-box-solution}
+ggplot(data = lakeimpute, aes(x = nitrate_NA, y = nitrate)) +
+  geom_boxplot()
+```
+
+#### Critical thinking exercise
+
+Based on the boxplot created in the exercise above, does it appear that the imputed value is representative of measured values of nitrate concentration in the original dataset? 
+
+**Keep in mind:** mean imputation may not appear terrible at this point, but moving forward we will explore why it is usually problematic. 
+
+### Visualize imputed and missing values
+
+While the mean imputation might not look bad when compared to measured data in a boxplot, it is important to also get a sense of the variation in the data by exploring how the **scale** and **spread** of imputed values differs from measured values within and across variables.
+
+We can asses the scale of the imputations in a scatterplot, indicating incomplete cases by mapping an aesthetic to the `any_missing` variable created by `add_label_shadow()`.
+
+For example, using the Green Lake data with imputed mean values from `lakeimpute` created above:
+
+```{r, echo = TRUE}
+ggplot(data = lakeimpute, aes(x = pH, y = temp)) +
+  geom_point(aes(color = any_missing))
+```
+
+#### Critical thinking exercise
+
+In the graph above, the coordinates for each point are based on pH (x-axis) and temperature (y-axis) pairs. Since we're using mean imputation, we expect to see imputed values at the mean or either pH or temperature (e.g., as a vertical or horizontal line at those mean values, respectively). However, we see that other points are indicated as 'Missing' in the graph above, despite having a recorded value for both pH and temperature. 
+
+Why do points that are *not missing* for either pH or temperature showing up as 'Missing' in the graph above? What does this tell us about how `any_missing` works? 
+
+**Hint:** Is it *only* showing missingness in the two variables that are plotted?
+
+### Visualize imputation across variables
+
+So far, we have explored imputed values for individual variables or pairs of variables. To extend exploration for more than two variables, it is best to reshape our nabular data into *long format*. In the following exercises, use `shadow_long` to reshape nabular data for exploring missingness across multiple variables.
+
+#### Exercise
+
+Use the `shadow_long()` function to gather the imputed data in `lakeimpute`, focusing on `pH` and `temp` and storing the outcome as object `lake_long`. Inspect the resulting long-format data (what are the updated variable names?).
+
+```{r lake-impute-long, exercise = TRUE}
+
+```
+
+```{r lake-impute-long-hint}
+lake_long <- shadow_long(_______, 
+                         _______, 
+                         _______)
+```
+
+```{r lake-impute-long-solution}
+lake_long <- shadow_long(lakeimpute,
+                         pH,
+                         temp)
+
+lake_long
+```
+
+#### Exercise
+
+Starting with the long-format `lake_long` object, created in the exercise above (and pre-stored in this tutorial), explore the imputations in a histogram using `geom_histogram()`. Place the values (`value`) on the x-axis, update the fill color by missingness and facet by `variable`. 
+
+```{r lake-impute-hist, exercise = TRUE}
+
+```
+
+```{r lake-impute-hist-hint}
+ggplot(lake_long, 
+       aes(x = as.numeric(value), fill = value_NA)) +
+  geom_histogram() +
+  facet_wrap(~variable)
+```
+
+### Practicing imputation with different models
+
+In the previous sections, we learned how to investigate values that were created by *mean imputation*, in which all missing values of a variable are replaced with the *mean* of all recorded values.  
+
+Here, we will use then evaluate several other methods for imputation from the `simputation` package in R, which provides a simple, powerful interface into performing imputations.
+
+**Note:** Building and selecting a good imputation model is critical, but complex - **there is as much to building a good imputation model as there is for building a good statistical model**. In this course, we focus on how to *explore and evaluate* imputations. For more rigorous explanations and considerations when building imputation models, we recommend the following: 
+
+[TODO] resources for imputation model selection
+
+### Linear imputation: single variable
+
+A common imputation method is *linear imputation*, which imputes values according to a specified linear model. In these exercises, we will use the `impute_lm()` function to populate missing values based on a linear model we specify, then explore and evaluate the imputed values using techniques introduced in the previous section.
+
+Reminder: You will first create nabular data, then add a separate line for each variable imputed (based on a linear model), using code similar to the following: 
+
+```
+data %>%
+  nabular() %>%
+  impute_lm(y1 ~ x1 + x2) %>%
+  impute_lm(y2 ~ x1 + x2) %>%
+  add_label_shadow()
+```
+
+#### Exercise
+
+Overall missingness for the `greenlake` data are shown below:
+
+```{r, echo = TRUE}
+vis_miss(greenlake)
+```
+
+Assuming that water temperature is linearly related to lake depth: 
+
+1. Impute temperature values using only depth as a predictor variable by linear imputation (e.g., `temp ~ depth`). Store the resulting data frame as `greenlake_lm`, which contains tracked missing values using `add_label_shadow`. 
+
+2. Plot the imputed and non-imputed values for `temp` versus `depth` as a scatterplot, updating the point color based on `temp_NA` to indicate which temperature values have been imputed. 
+
+```{r greenlake-temp-impute, exercise = TRUE}
+
+```
+
+```{r greenlake-temp-impute-hint}
+# First, create the imputed data using a linear model. Keep track of the missing values using add_label_shadow: 
+greenlake_imp_lm <- greenlake %>% 
+  nabular() %>% 
+  impute_lm(_____ ~ _____) %>% 
+  add_label_shadow()
+
+# Then, plot the imputed values along with the originally recorded values: 
+ggplot(greenlake_imp_lm, aes(x = _____, y = _____)) +
+  geom_point(aes(color = _____))
+```
+
+```{r greenlake-temp-impute-solution}
+# First, create the imputed data using a linear model. Keep track of the missing values using add_label_shadow: 
+greenlake_imp_lm <- greenlake %>% 
+  nabular() %>% 
+  impute_lm(temp ~ depth) %>% 
+  add_label_shadow()
+
+# Then, plot the imputed values along with the originally recorded values: 
+ggplot(greenlake_imp_lm, aes(x = depth, y = temp)) +
+  geom_point(aes(color = temp_NA))
+```
+Great! Now you have used linear imputation to replace missing values for a single variable. In the next exercises, you will use linear imputation to impute values for *multiple* variables. 
+
+### Linear imputation: multiple variables
+
+In the exercise above, you imputed values for a single variable (`temp`) that contained missing values, based on one other variable (`depth`) in the data. Sometimes, you will impute values for multiple variables. Below, use linear imputation to replace missing values for *two* variables, then visualize the resulting data. 
+
+#### Exercise
+
+In this exercise, you will use the built-in `oceanbuoys` dataset. A visual of missingness in the `oceanbuoys` dataset is shown below:
+
+```{r, echo = TRUE}
+vis_miss(oceanbuoys)
+```
+
+Starting with the `oceanbuoys` dataset:
+
+1. Impute `air_temp_c` and `humidity` using `wind_ew` and `wind_ns` as variables in the linear model (i.e. for both, use `~ wind_ew + wind_ns` in your model). Store the resulting data frame as `ocean_imp_lm_wind`, and keep track missing values using `add_label_shadow()`
+
+2. Plot the imputed values for `air_temp_c` and `humidity`, putting them on the x and y-axis, respectively, and distinguish imputed values by updating the point color with `any_missing()`.
+
+
+```{r impute-lm-oceanbuoys, exercise = TRUE}
+
+```
+
+```{r impute-lm-oceanbuoys-hint}
+# Impute humidity and air temperature using wind_ew and wind_ns, and track missing values
+ocean_imp_lm_wind <- ___ %>% 
+    nabular() %>%
+    impute_lm(air_temp_c ~ wind_ew + wind_ns) %>% 
+    impute_lm(___ ~ ___ + ___) %>%
+    add_label_shadow()
+    
+# Plot the imputed values for air_temp_c and humidity, colored by missingness
+ggplot(___, 
+       aes(x = ___, y = ___, color = any_missing)) + 
+  geom_point()
+```
+
+```{r impute-lm-oceanbuoys-solution}
+# Impute humidity and air temperature using wind_ew and wind_ns, and track missing values
+ocean_imp_lm_wind <- oceanbuoys %>% 
+    nabular() %>%
+    impute_lm(air_temp_c ~ wind_ew + wind_ns) %>% 
+    impute_lm(humidity ~ wind_ew + wind_ns) %>%
+    add_label_shadow()
+    
+# Plot the imputed values for air_temp_c and humidity, colored by missingness
+ggplot(ocean_imp_lm_wind, 
+       aes(x = air_temp_c, y = humidity, color = any_missing)) +
+  geom_point()
+```
+
+
+### Compare imputation models
+
+When building an imputation model, it's often useful to compare it to another method. In this exercise, you will compare imputed values created by the two methods used in previous exercises: mean imputation, and linear imputation.  
+
+#### Exercise
+
+In this exercise, you will compare imputations in two stored datasets: `ocean_imp_lm_wind` and `ocean_imp_mean`, in which missing values have been imputed by linear and mean imputation, respectively. 
+
+For `ocean_imp_lm_wind`, missing values in `humidity` and `air_temp_c` are modeled by wind (`~ wind_ew + wind_ns`) as in the previous exercise. For `ocean_imp_mean`, missing values in `humidity` and `air_temp_c` are replaced by the mean of recorded values for each variable. 
+
+1. Bind the models together using `bind_rows()`, placing the `ocean_imp_mean` model into `mean`, and `ocean_imp_lm_wind` into `lm_wind`. 
+
+2. Look at the values of `air_temp` and `humidity` as a scatterplot, placing `air_temp_c` on the x-axis, `humidity` on the y-axis, color by any missings, and **faceting by imputation model** (i.e., facet by the `imp_model` variable).
+
+
+**Hint:** to bind the different imputation models together, use:
+
+```
+bind_rows(mean = ocean_imp_mean, 
+         lm_wind = ocean_imp_lm_wind, 
+         .id = "imp_model")
+```
+
+```{r compare-imp, exercise = TRUE}
+
+```
+
+```{r compare-imp-hint}
+# Bind the models together 
+bound_models <- bind_rows(mean = ocean_imp_mean,
+                          lm_wind = ocean_imp_lm_wind,
+                          .id = "imp_model")
+
+# Inspect the values of air_temp and humidity as a scatterplot
+ggplot(bound_models,
+       aes(x = _______,
+           y = _______,
+           color = _______)) +
+  geom_point() + 
+  facet_wrap(~_______)
+```
+
+
+```{r compare-imp-solution}
+# Bind the models together 
+bound_models <- bind_rows(mean = ocean_imp_mean,
+                          lm_wind = ocean_imp_lm_wind,
+                          .id = "imp_model")
+
+# Inspect the values of air_temp and humidity as a scatterplot
+ggplot(bound_models,
+       aes(x = air_temp_c,
+           y = humidity,
+           color = any_missing)) +
+  geom_point() + 
+  facet_wrap(~imp_model)
+```
+
+Now you can compare imputed values across different models, building on methods for missing data visualization you've learned previously. 
+
+### Compare multiple imputation models, across multiple variables
+
+#### Exercise
+
+Using the `oceanbuoys` dataset, complete the following code to:
+
+1. Impute data for `humidity` and `air_temp_c` by linear imputation as above using `impute_lm()`, but **adding `year` to the imputation model in addition to `wind_ew` and `wind_ns`** and storing as `ocean_imp_lm_wind`. The two other models you will compare it to (`ocean_imp_mean` and `ocean_imp_lm_wind`) are already stored. 
+
+2. Bind the imputation methods together, placing `ocean_imp_mean` into `mean`, `ocean_imp_lm_wind` into `lm_wind`, and `ocean_imp_lm_wind_year` into `lm_wind_year`
+
+3. Explore values of `air_temp_c` (on the x-axis) and `humidity` (on the y-axis), with color updated by `any_missing`, and faceting by the imputation model.
+
+4. Interpret the outcome of the exercise. Which *looks* like the best imputation? Which appears to be the worst? 
+
+```{r ocean-impute-compare, exercise = TRUE}
+# Build a model `ocean_imp_lm_wind` to impute values for humidity and air_temp_c, based on variables wind_ew, wind_ns, and year:
+ocean_imp_lm_wind_year <- 
+  oceanbuoys %>% 
+  ______() %>% # Remember: make nabular data!
+  impute_lm(______ ~ ______ + ______ + ______) %>%
+  impute_lm(______ ~ ______ + ______ + ______) %>%
+  add_label_shadow()
+
+# Bind the mean, lm_wind, and lm_wind_year models together
+bound_models <- bind_rows(mean = _______,
+                          lm_wind = _______,
+                          lm_wind_year = _______,
+                          .id = "imp_model")
+
+# Explore air_temp and humidity, coloring by any missings, and faceting by imputation model
+ggplot(bound_models, aes(x = ______, y = ______, color = ______)) +
+  geom_point() + facet_wrap(~_______)
+```
+
+```{r ocean-impute-compare-hint}
+# Build a model adding year to the included variables
+ocean_imp_lm_wind_year <- 
+  oceanbuoys %>% 
+  nabular() %>%
+  impute_lm(air_temp_c ~ wind_ew + wind_ns + ______) %>%
+  impute_lm(humidity ~ wind_ew + wind_ns + ______) %>%
+  add_label_shadow()
+
+# Bind the mean, lm_wind, and lm_wind_year models together
+bound_models <- bind_rows(mean = ocean_imp_mean,
+                          lm_wind = ocean_imp_lm_wind,
+                          lm_wind_year = _________,
+                          .id = "imp_model")
+
+# Explore air_temp and humidity, coloring by any missings, and faceting by imputation model
+ggplot(bound_models, aes(x = ______, y = ______, color = ______)) +
+  geom_point() + facet_wrap(~_______)
+```
+
+
+```{r ocean-impute-compare-solution}
+# Build a model adding year to the outcome
+ocean_imp_lm_wind_year <- nabular(oceanbuoys) %>%
+  impute_lm(air_temp_c ~ wind_ew + wind_ns + year) %>%
+  impute_lm(humidity ~ wind_ew + wind_ns + year) %>%
+  add_label_shadow()
+
+# Bind the mean, lm_wind, and lm_wind_year models together
+bound_models <- bind_rows(mean = ocean_imp_mean,
+                          lm_wind = ocean_imp_lm_wind,
+                          lm_wind_year = ocean_imp_lm_wind_year,
+                          .id = "imp_model")
+
+# Explore air_temp and humidity, coloring by any missings, and faceting by imputation model
+ggplot(bound_models, aes(x = air_temp_c, y = humidity, color = any_missing)) +
+  geom_point() + facet_wrap(~imp_model)
+```
+
+### Putting it all together: evaluating imputation models
+
+In these exercises, you will combine skills from previous exercises to compare three imputation models for the `oceanbuoys` data. Two methods (`ocean_cc` and `ocean_imp_lm_wind`) are already created and stored: 
+
+- `ocean_cc` contains only complete cases
+- `ocean_imp_lm_wind` contains imputed values for `humidity` and `air_temp_c` created by linear imputation using only wind as predictor variables `wind_ew` and `wind_ns` (e.g. `~ wind_ew + wind_ns`)
+
+For this exercise, you will create the third imputed dataset, called `ocean_imp_lm_all`, then bind the three datasets together to compare them visually.
+
+#### Exercise
+
+In the code area below: 
+
+1. Starting from `oceanbuoys`, complete the code below to create an imputed dataset named `ocean_imp_lm_all` in which you use linear imputation (`lm_impute`) to impute missing values for variables `sea_temp_c`, `air_temp_c`, and  `humidity` using the variables `wind_ew`, `wind_ns`, `year`, `latitude`, `longitude` (e.g. `~ wind_ew + wind_ns + year + latitude + longitude`)
+
+2. Bind `ocean_imp_lm_all` together with existing data `ocean_cc` and `ocean_imp_lm_wind` into a single object called `bound_models`.
+
+3. Compare the models visually, updating point color using `any_missing` and faceting by the different models. 
+
+Hint 1: Remember to impute missing values using the variables `wind_ew`, `wind_ns`, `year`, `latitude`, and `longitude`, using the following code (this is to impute missing values for the `sea_temp_c` variable): 
+
+```
+impute_lm(sea_temp_c ~ wind_ew + wind_ns + year + latitude + longitude)
+```
+
+Hint 2: Once you have created `ocean_imp_lm_all`, bind the three datasets together using `bind_rows` to have abbreviated names like the following: `bind_rows(cc = ocean_cc)`.
+
+```{r ocean-impute-all, exercise = TRUE}
+# Create an imputed dataset using linear imputation:
+ocean_imp_lm_all <- oceanbuoys %>%
+  nabular() %>% 
+  add_label_shadow() %>%
+  impute_lm(sea_temp_c ~ wind_ew + wind_ns + ___ + ___ + ___) %>%
+  impute_lm(air_temp_c ~ wind_ew + wind_ns + ___ + ___ + ___) %>%
+  impute_lm(humidity ~ wind_ew + wind_ns + ___ + ___ + ___)
+
+# Bind the three datasets together (ocean_cc, ocean_imp_lm_wind, ocean_imp_lm_all):
+bound_models <- bind_rows(cc = ___,
+                          imp_lm_wind = ___,
+                          imp_lm_all = ___,
+                          .id = "imp_model")
+# Look at the models
+bound_models
+
+# Compare the models visually:
+ggplot(data = bound_models, aes(x = air_temp_c, y = humidity)) +
+  geom_point(aes(color = _______)) +
+  facet_wrap(~_______)
+```
+
+```{r ocean-impute-all-solution}
+# Create an imputed dataset using a linear models
+ocean_imp_lm_all <- nabular(oceanbuoys) %>%
+  add_label_shadow() %>%
+  as.data.frame() %>% 
+  impute_lm(sea_temp_c ~ wind_ew + wind_ns + year + latitude + longitude) %>%
+  impute_lm(air_temp_c ~ wind_ew + wind_ns + year + latitude + longitude) %>%
+  impute_lm(humidity ~ wind_ew + wind_ns + year + latitude + longitude)
+
+# Bind the datasets
+bound_models <- bind_rows(cc = ocean_cc,
+                          imp_lm_wind = ocean_imp_lm_wind,
+                          imp_lm_all = ocean_imp_lm_all,
+                          .id = "imp_model")
+
+# Look at the models
+bound_models
+
+# Compare the models visually:
+ggplot(data = bound_models, aes(x = air_temp_c, y = humidity)) +
+  geom_point(aes(color = any_missing)) +
+  facet_wrap(~imp_model)
+```
+
+### Evaluating model parameters with imputed data
+
+We are imputing data for a reason - we want to analyze the data! In this example, we are interested in predicting sea temperature, so we will build a linear model predicting sea temperature. 
+
+We will fit this model to each of the three datasets created previously (`ocean_cc`, `ocean_imp_lm_wind`, `ocean_imp_lm_all`, aggregated as `bound_models`), then explore the resulting parameters. The objects from the previous section are already stored for use.
+
+**instructions**
+
+- Create the model summary for each dataset with columns for residuals using `residuals`, `predict`, and `tidy`.
+- Explore the coefficients in the model and put the model with the highest estimate for `air_temp_c` in the object best_model
+
+**hint**
+
+* Remember when using map to use the following format:  `variable = map(model_data, function)`.
+* To get the residuals, use `res = map(mod, residuals)`.
+* To get the predictions , use `pred = map(mod, predict)`.
+* To get the tidy coefficients, use `tidy = map(mod, broom::tidy))`.
+
+**sample code**
+
+```{r impute-param-compare, exercise = TRUE}
+# Create the model summary for each dataset
+model_summary <- bound_models %>% 
+  group_by(imp_model) %>%
+  nest() %>%
+  mutate(mod = map(data, ~lm(sea_temp_c ~ air_temp_c + humidity + year, data = .)),
+         res = map(mod, ___),
+         pred = map(mod, ___),
+         tidy = map(mod, ___))
+
+# Explore the coefficients in the model
+model_summary %>% 
+	select(___,___) %>% 
+	unnest()
+best_model <- "___"
+```
+
+```{r impute-param-compare-solution}
+# Create the model summary for each dataset
+model_summary <- bound_models %>% 
+  group_by(imp_model) %>%
+  nest() %>%
+  mutate(mod = map(data, ~lm(sea_temp_c ~ air_temp_c + humidity + year, data = .)),
+         res = map(mod, residuals),
+         pred = map(mod, predict),
+         tidy = map(mod, broom::tidy))
+
+# Explore the coefficients in the model
+model_summary %>% 
+  select(imp_model,tidy) %>%
+  unnest(cols = c(tidy))
+
+best_model <- "imp_lm_all"
+```
+
+
+### Assessing inference from imputated data in a modeling context
+

@@ -1,0 +1,402 @@
+/******
+missing-book
+*******/
+
+/***** import fonts *****/
+
+@import url('https://fonts.googleapis.com/css2?family=Hind+Madurai:wght@300;500;600&display=swap');
+
+/*-------- Background color & body font --------*/
+
+body {
+  font-family: 'Hind Madurai', sans-serif !important;
+  font-weight:300 !important;
+  background-color: #ffffff;
+  font-size: 14px;
+  line-height: 2.0em;
+}
+
+p {
+  margin-top: 1em !important;
+}
+
+/*-------- Headers --------*/
+
+h2 {
+  font-family: 'Hind Madurai', sans-serif !important;
+  font-weight: 600 !important;
+  margin-bottom: 1.5em;
+  text-transform: none !important;
+}
+
+h3 {
+  font-family: 'Hind Madurai', sans-serif !important;
+  font-weight: 500 !important;
+  margin-bottom: 1.5em;
+  text-transform: none !important;
+}
+
+h4 {
+  font-family: 'Hind Madurai', sans-serif !important;
+  font-weight: 500 !important;
+  text-transform: uppercase;
+  color: white !important;
+  background: #2e4538;
+  display: inline;
+  padding-left: 0.2em;
+  padding-right: 0.2em;
+  margin-bottom: 0.5 !important;
+}
+
+h5 {
+  font-family: 'Hind Madurai', sans-serif !important;
+  font-weight: 500 !important;
+  text-transform: none;
+  color: black !important;
+  display: inline;
+  padding-left: 0.2em;
+  padding-right: 0.2em;
+  margin-bottom: 0.5 !important;
+}
+
+
+.topicsContainer {
+  margin-right: 2em;
+}
+
+.topics {
+  margin-top: 1em;
+  padding-left: 1em;
+}
+
+
+/* Remove extra space on mobile */
+
+@media screen and (max-width: 767px) {
+
+  .band {
+    margin-top: 0;
+  }
+
+  div.section {
+    padding-top: 1em;
+    margin-top: -0.5em;
+  }
+
+  .topicsContainer {
+      width: 1%;
+      min-width: 1px;
+      margin-right: 0;
+      border: none !important;
+  }
+
+  .topics {
+      padding-top: 1em !important;
+      width: 99% !important;
+      border-left: none !important;
+  }
+}
+
+
+/*-------- Content / Main Panel ---------*/
+
+.topics {
+    width: 75%;
+    overflow-x: auto;
+    padding-bottom: 50px !important;
+    background-color: white;
+    border-left: 1pt solid #d9d9d9;
+}
+
+/* Side Panel Start Over Button */
+
+.topicsFooter .resetButton {
+  display: block;
+  max-width: 60%;
+  padding: 10px 20px;
+  /* background-color: #eab0c46b; */
+  border: solid 1pt gray;
+  color: black;
+  font-size: 14px !important;
+  letter-spacing: 1pt;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  margin: 0 auto;
+  margin-top: 1em;
+}
+
+/*-------- Code chunk header panel ---------*/
+.panel-default > .panel-heading {
+
+}
+
+/*------- Rectangle panels --------*/
+
+.panel, pre {
+}
+
+
+/*-------- Code chunk main panel --------*/
+
+.ace-tm {
+}
+
+/*-------- Line # cells --------*/
+
+.ace_gutter-cell {
+    padding-left: 10px;
+    padding-right: 4px;
+}
+
+/*-------- Code returns --------*/
+.tutorial-exercise-output > pre {
+}
+
+
+/*------- In line code aesthetic --------*/
+code {
+  
+}
+
+/*------- Hyperlinks --------*/
+
+a,
+a:hover,
+a:focus {
+  color: #477c5e;
+  text-decoration: none;
+}
+
+a:hover,
+a:focus {
+  text-decoration: underline;
+}
+
+/*------- Sidebar/Main Menu -------*/
+
+/*--Title--*/
+
+h2.tutorialTitle,
+.topicsHeader h2.tutorialTitle {
+  font-size: 2.4em;
+  color: black;
+  text-transform: normal;
+  letter-spacing: normal;
+  margin-bottom: 1em;
+}
+
+/*--Name, Date etc.--*/
+
+#doc-metadata {
+  margin-bottom: 1.5em;
+  padding-bottom: 1.5em;
+  border-bottom: solid 1pt #333333;
+}
+
+#doc-metadata h3,
+#doc-metadata h4 {
+  text-transform: uppercase;
+  letter-spacing: 2pt;
+  line-height: 1.6em;
+}
+
+
+.topicsContainer {
+}
+
+/* sidebar item */
+
+.topicsList .topic {
+  color: #333333;
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: 1pt;
+  line-height: 1.3em !important;
+  padding: 0.3em 0!important;
+  padding-left: 0.4em !important;
+  background-image: none;
+  border-bottom: none;
+  border-left: none !important;
+}
+
+/*--- When hovering ---*/
+
+.topicsList .topic:hover {
+    background-color: white;
+    color: #477c5e;
+    /* border-left: 2px solid #CA225E40;*/
+}
+
+/*------- Selected menu item -------*/
+
+.topicsList .topic.current {
+    background-color: white !important;
+    color: #477c5e;
+    /*border-left: 2px solid #CA225E;*/
+}
+
+/* CODE WINDOWS */
+
+/*------- Solution / Hint buttons -------*/
+.tutorial-exercise-input .btn-tutorial-solution {
+    margin-left: 15px;
+    background-color: #006666;
+    color: white;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 13px;
+    border: 0;
+    text-shadow: none;
+}
+
+/*------- Solution popover --------*/
+.popover-title {
+    margin: 0;
+    padding: 8px 14px;
+    font-size: 14px;
+    background-color: #006666;
+    border-bottom: 1px solid #ebebeb;
+    border-radius: 5px 5px 0 0;
+    color: white;
+    text-shadow: none;
+    font-family: 'Open Sans', sans-serif;
+}
+
+/*------- BUTTONS -------*/
+
+.topicActions .btn-primary,
+.topicActions .btn-success,
+.topicActions .btn-info,
+.topicActions .btn-xs,
+.topicActions .btn-default {
+    background-image: none;
+    border: 0;
+    text-shadow: none;
+    border-radius: 0;
+    letter-spacing: 1pt;
+}
+
+.btn-success, .btn-info {
+    background-color: #006666;
+    background-image: none;
+    border: none;
+}
+
+.btn-success:hover {
+  background-color: #669999;
+  color: white;
+}
+
+.btn-tutorial-solution:hover {
+  background-color: #669999;
+  color: white;
+}
+
+.alert-danger {
+    background-color: #FFDEA4;
+    border-color: #F0B753;
+    color: #C45C00;
+}
+
+# --------- Submit answer button --------- #
+.btn-primary, .btn-success, .btn-info {
+    background-color: #477c5e !important;
+    border: none;
+}
+
+# ---------- Submit answer button hover ----------#
+.btn-primary:hover, .btn-success:hover, .btn-info:hover {
+  background-color: #477c5e !important;
+    background-image: none;
+    border: none;
+    color: white;
+}
+
+
+.topicActions .btn-primary,
+.topicActions .btn-primary:active,
+.topicActions .btn-primary:focus {
+  color: white;
+  background-color: #006666;
+}
+
+/*------- Buttons when hovering -------*/
+
+.topicActions .btn-default:hover,
+.topicActions .btn-primary:hover {
+  background-color: #669999;
+  color: white;
+}
+
+/*-------- Code chunk buttons hover aesthetic -------*/
+
+.tutorial-exercise-input .btn-xs{
+    /*font-size: 13px; */
+}
+
+.tutorial-exercise-input .btn-xs:hover {
+    /*margin-right: 0;
+    margin-top: -1px;
+    font-size: 13px;
+    margin-left: 12px;
+    padding-right: 8px;
+    font-weight: normal;
+    background-color: #801945;
+    color: white;
+    border: 0;*/
+}
+
+/*------- Button disabled -------*/
+.btn-primary.disabled {
+    background-color: lightgray;
+}
+
+
+/*-------Colored Bullets-------*/
+
+.section ul {
+  list-style: none; /* Remove default bullets */
+}
+
+.section ul li::before {
+  content: "\2022";  /* Add content: \2022 is the CSS Code/unicode for a bullet */
+  color: #669999;; /* Change the color */
+  display: inline-block; /* Needed to add space between the bullet and the text */
+  width: 1.5em; /* Also needed for space (tweak if needed) */
+  margin-left: -1.5em; /* Also needed for space (tweak if needed) */
+}
+
+.section ul > li > p {
+  display: inline; /* to have content show up next to bullet */
+}
+
+.section ul > li { /*to add back in space between bullet items that I took away by making p display inline */
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+/* --------- Text box --------- */
+
+.text-box-info {
+background-color: #E4EEEB;
+border-style: solid;
+border-width: 2px;
+border-radius: 0px; /*rounds corners*/
+border-color: #C5D6D1;
+padding-left: 10px;
+padding-top: 10px;
+padding-right: 10px;
+padding-bottom: 5px;
+}
+
+.text-box-bigpicture {
+background-color: #EEFADC;
+border-style: solid;
+border-width: 2px;
+border-radius: 0px; /*rounds corners*/
+border-color: #D3E39E;
+padding-left: 10px;
+padding-top: 10px;
+padding-right: 10px;
+padding-bottom: 5px;
+}
